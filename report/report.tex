@@ -1,0 +1,401 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\graphicspath{{figures/}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\Lmax}{L_{\max}}
+\newcommand{\Cmax}{C_{\max}}
+\newcommand{\Rmin}{R_{\min}}
+
+\begin{document}
+
+\title{QoS-Aware Service Composition under Latency, Cost and Reliability Constraints}
+
+\author{\IEEEauthorblockN{Aishwary Vansh}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering}\\
+\textit{Indian Institute of Information Technology Sri City}\\
+Sri City, India}
+\and
+\IEEEauthorblockN{Soham Biswas}
+\IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering}\\
+\textit{Indian Institute of Information Technology Sri City}\\
+Sri City, India}
+}
+
+\maketitle
+
+\begin{abstract}
+A composite cloud service must meet end-to-end limits on latency, cost and reliability at the same time, yet these goals conflict: fast, reliable services cost more. We model each candidate service as a QoS vector and study two composers: a greedy composer with constraint-aware repair and a genetic algorithm (GA) using feasibility-first selection. We also evaluate a hybrid that seeds the GA with the greedy result. An exact integer program provides the true optimum as a reference. Because absolute constraint levels hide the hard region, we measure tightness relative to the feasibility limit of each instance. Over 1,320 synthetic instances, plain local selection failed as soon as the constraints began to bind. Greedy-Repair, the GA and the hybrid all reached a 100\% success rate up to 98\% of the feasibility limit, with mean optimality gaps below 0.35\%. At the limit itself, success fell to 17\%, 37\% and 43\% respectively. Greedy-Repair was about 40 times faster than the GA and more accurate on larger instances, while the hybrid gave the best overall balance. We also show that each constraint alone is easy, whereas the three together are not.
+\end{abstract}
+
+\begin{IEEEkeywords}
+QoS-aware service composition, cloud services, genetic algorithm, greedy algorithm, multi-constraint optimization
+\end{IEEEkeywords}
+
+\section{Introduction}
+Cloud applications are increasingly built by chaining independent services. A workflow such as \emph{authenticate, fetch, process, store, notify} has one abstract task per step, and each task can be served by several functionally equivalent services. These candidates differ in Quality of Service (QoS). The composition problem is to select one candidate per task so that the whole workflow satisfies the end-to-end requirements of the user~\cite{sheng2014,jula2014}.
+
+Requirements on a single attribute are easy to meet. The difficulty is that attributes conflict. Selecting the fastest services raises cost, and selecting the cheapest services hurts latency and reliability. The search space also grows exponentially: with 10 tasks and 20 candidates per task there are about $10^{13}$ compositions.
+
+\textbf{Research problem.} Composite cloud services must satisfy multiple QoS constraints simultaneously.
+
+\textbf{Research gap.} Although the field is mature, student-level implementations that handle latency, cost and reliability together remain limited. Such implementations seldom measure heuristics against a proven optimum, or vary constraint tightness in a controlled way.
+
+\textbf{Proposed solution.} We model a set of candidate services with QoS vectors, implement a greedy and a GA-based composer, and compare their success rate and solution quality under different constraint tightness. Our specific contributions are:
+\begin{itemize}
+\item a working Python model of multi-constraint composition, with a greedy composer that adds constraint-aware repair, and a GA that uses Deb's feasibility rules;
+\item an exact integer-programming reference, so that every result is reported as a gap to the true optimum;
+\item a \emph{relative tightness} measure based on the feasibility limit of each instance, which exposes the hard region that absolute constraint levels hide;
+\item an evaluation of 1,320 instances covering tightness, scalability, single versus combined constraints, constraint handling and convergence, with paired significance tests.
+\end{itemize}
+
+Section~\ref{sec:related} reviews related work. Section~\ref{sec:problem} formulates the problem, and Section~\ref{sec:algorithms} presents the algorithms. Sections~\ref{sec:setup} and~\ref{sec:results} give the setup and results, Section~\ref{sec:discussion} discusses them, and Section~\ref{sec:conclusion} concludes.
+
+\section{Related Work}\label{sec:related}
+Surveys by Sheng \emph{et al.}~\cite{sheng2014} and Jula \emph{et al.}~\cite{jula2014} show that QoS-aware selection is a central theme of service composition research. The approaches relevant here fall into three groups.
+
+\textbf{Exact methods.} Zeng \emph{et al.}~\cite{zeng2004} compared local selection, which optimizes each task independently, with global planning by integer programming. Local selection cannot enforce end-to-end constraints, while global planning can but scales poorly. Ardagna and Pernici~\cite{ardagna2007} extended optimization-based selection to adaptive, flexible processes. Our MILP follows the same line, but serves only as a quality reference.
+
+\textbf{Heuristics.} Yu \emph{et al.}~\cite{yu2007} studied efficient selection algorithms for end-to-end QoS constraints. Alrifai and Risse~\cite{alrifai2009} used integer programming to decompose global constraints into local ones, and then applied fast local selection, reaching near-optimal results at a much lower computation time. Our Greedy-Repair works differently: it begins with the local choice and repairs violations with single swaps, using no solver.
+
+\textbf{Evolutionary methods.} Canfora \emph{et al.}~\cite{canfora2005} showed that a GA is a practical alternative to integer programming for composition, particularly as problem size grows. A recurring design question is how to treat constraints. Deb~\cite{deb2000} proposed a parameter-free rule set that compares individuals in tournament selection and needs no penalty weight. We adopt these rules, and compare them against static penalties.
+
+\textbf{Gap addressed.} Prior work focuses on new algorithms, and usually evaluates them at fixed constraint levels. We instead examine how a simple greedy and GA composer behave as constraints approach the feasibility limit, measured against a proven optimum.
+
+\section{Problem Formulation}\label{sec:problem}
+
+\subsection{Service and Composition Model}
+A workflow has $N$ abstract tasks executed in sequence. Each task $i$ has $M$ candidates, and each candidate $j$ has a QoS vector $q_{ij} = (l_{ij}, c_{ij}, r_{ij})$ holding its latency, cost and reliability. A composition is a vector $a = (a_1,\dots,a_N)$, where $a_i \in \{1,\dots,M\}$ is the candidate chosen for task $i$. The search space therefore has $M^N$ compositions.
+
+\subsection{QoS Aggregation}
+For a sequential workflow, end-to-end QoS is
+\begin{equation}
+L(a) = \sum_{i=1}^{N} l_{i a_i},\quad
+C(a) = \sum_{i=1}^{N} c_{i a_i},\quad
+R(a) = \prod_{i=1}^{N} r_{i a_i}.
+\end{equation}
+Taking logarithms gives $\log R(a) = \sum_i \log r_{i a_i}$, so all three aggregates are additive over tasks.
+
+\subsection{Objective and Constraints}
+The best and worst aggregate of each attribute are obtained by optimizing that attribute alone. For example, $L^{b} = \sum_i \min_j l_{ij}$ and $L^{w} = \sum_i \max_j l_{ij}$; the bounds $C^{b}, C^{w}$ and the log-reliability bounds $\log R^{b}, \log R^{w}$ follow in the same way. Write $\Delta_L = L^{w}-L^{b}$, $\Delta_C = C^{w}-C^{b}$ and $\Delta_R = \log R^{b}-\log R^{w}$. The objective is a Simple Additive Weighting utility with weights $w_L+w_C+w_R=1$:
+\begin{equation}
+U(a) = w_L\frac{L^{w}-L(a)}{\Delta_L} + w_C\frac{C^{w}-C(a)}{\Delta_C} + w_R\frac{\log R(a)-\log R^{w}}{\Delta_R}.
+\end{equation}
+Utility lies in $[0,1]$. Because every aggregate is additive, it splits exactly into per-service terms, $U(a)=\sum_i u_{i a_i}$. The problem is
+\begin{equation}
+\max_{a}\; U(a) \;\;\text{s.t.}\;\; L(a)\le \Lmax,\; C(a)\le \Cmax,\; R(a)\ge \Rmin.
+\end{equation}
+Constraint violation is measured on the same normalized scale, so that no attribute dominates:
+\begin{multline}
+V(a) = \frac{[L(a)-\Lmax]^{+}}{\Delta_L} + \frac{[C(a)-\Cmax]^{+}}{\Delta_C} \\
++ \frac{[\log \Rmin-\log R(a)]^{+}}{\Delta_R},
+\end{multline}
+where $[x]^{+}=\max(0,x)$. A composition is feasible when $V(a)=0$, up to a numerical tolerance of $10^{-7}$.
+
+\subsection{Constraint Tightness}
+Absolute tightness $\tau\in[0,1]$ places each bound between the worst and best aggregate:
+\begin{equation}
+\Lmax = L^{b} + (1-\tau)\Delta_L,\quad \Cmax = C^{b} + (1-\tau)\Delta_C,
+\end{equation}
+\begin{equation}
+\log \Rmin = \log R^{b} - (1-\tau)\Delta_R.
+\end{equation}
+At $\tau=0$ every composition is feasible. At $\tau=1$ each bound equals the best value of its attribute alone, which no single composition normally reaches for all three.
+
+Feasible sets are nested in $\tau$, so each instance has a \emph{critical tightness} $\tau^{*}$: the largest $\tau$ that still admits a feasible composition. We find $\tau^{*}$ by bisection with the exact solver, to within $10^{-3}$. \emph{Relative tightness} is then
+\begin{equation}
+\rho = \tau / \tau^{*}.
+\end{equation}
+With $\rho\le 1$ every instance is solvable, and $\rho=1$ places it at the edge of feasibility.
+
+\subsection{Complexity}
+Choosing one item from each class subject to several resource limits is the Multi-choice Multi-dimensional Knapsack Problem, which is NP-hard~\cite{yu2007}. Exact methods therefore have no polynomial-time guarantee, which motivates the heuristics below.
+
+\subsection{Worked Example}
+Consider $N=2$ tasks with $M=2$ candidates each. Task 1 offers $(100\,\text{ms}, 5, 0.99)$ and $(300\,\text{ms}, 1, 0.90)$. Task 2 offers $(200\,\text{ms}, 2, 0.95)$ and $(50\,\text{ms}, 8, 0.98)$. The limits are $\Lmax=400$\,ms, $\Cmax=8$ and $\Rmin=0.85$, with equal weights. Table~\ref{tab:example} lists all four compositions. Choosing the best candidate for each task independently gives $(1,2)$, which has the highest utility, but its cost of 13 breaks the limit. The feasible optimum is $(1,1)$. The other infeasible options show how $V$ ranks violations: $(2,2)$ misses the cost limit by a little, with $V=0.1$, while $(2,1)$ breaks the latency limit by more, with $V=0.286$. Greedy-Repair (Algorithm~\ref{alg:greedy}) starts at $(1,2)$ and reaches the optimum in one swap.
+
+\begin{table}[t]
+\centering
+\caption{Worked Example: All Compositions of a $2\times2$ Instance}\label{tab:example}
+\footnotesize
+\begin{tabular}{cccccc}
+\toprule
+$a$ & $L$ (ms) & $C$ & $R$ & $U$ & $V$ \\
+\midrule
+$(1,1)$ & 300 & 7 & 0.9405 & 0.642 & 0.000 \\
+$(1,2)$ & 150 & 13 & 0.9702 & 0.667 & 0.500 \\
+$(2,1)$ & 500 & 3 & 0.8550 & 0.333 & 0.286 \\
+$(2,2)$ & 350 & 9 & 0.8820 & 0.358 & 0.100 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Composition Algorithms}\label{sec:algorithms}
+All composers rank solutions by Deb's feasibility rules~\cite{deb2000}: a feasible solution beats an infeasible one, two feasible solutions compare by utility, and two infeasible solutions compare by lower violation. Since $U\in[0,1]$, the rules reduce to one scalar key:
+\begin{equation}
+\kappa(a) =
+\begin{cases}
+U(a) & \text{if } V(a)=0,\\
+-1 - V(a) & \text{otherwise.}
+\end{cases}
+\end{equation}
+
+\subsection{Greedy Composers}
+\textbf{Greedy-Local} is the baseline. It selects $a_i=\argmax_j u_{ij}$ for each task in $O(NM)$ time. It is optimal without constraints, and ignores them when they exist.
+
+\textbf{Greedy-Repair} (Algorithm~\ref{alg:greedy}) is our greedy composer. It starts from the local choice. While constraints are violated, it evaluates every single swap and applies the one giving the most violation reduction per unit of utility lost. This is the classic knapsack ratio rule. Once the composition is feasible, steepest-ascent hill climbing raises utility while keeping feasibility. All $NM$ swaps are scored in one vectorized step, and each loop is capped at $10NM$ steps in total, so the running time is polynomial. Repair can stop at a dead end and report failure even when a feasible composition exists.
+
+\begin{algorithm}[t]
+\caption{Greedy-Repair}\label{alg:greedy}
+\footnotesize
+\begin{algorithmic}[1]
+\Require QoS matrices, constraints, step limit $T=10NM$
+\State $a_i \gets \argmax_j u_{ij}$ for every task $i$
+\While{$V(a)>0$ \textbf{and} steps $<T$} \Comment{repair}
+  \ForAll{swaps $(i,j)$}
+    \State $a' \gets a$ with $a_i$ replaced by $j$
+    \State $G_{ij}\gets V(a)-V(a')$;\; $D_{ij}\gets \max(U(a)-U(a'),0)$
+  \EndFor
+  \If{no swap has $G_{ij}>0$} \textbf{break} \Comment{dead end}
+  \EndIf
+  \State $(i^{*},j^{*})\gets \argmax_{G_{ij}>0}\; G_{ij}/(D_{ij}+10^{-9})$
+  \State $a_{i^{*}} \gets j^{*}$
+\EndWhile
+\If{$V(a)=0$} \Comment{improve}
+  \While{steps $<T$}
+    \State find the feasible swap with the largest gain in $U$
+    \If{gain $\le 0$} \textbf{break}
+    \EndIf
+    \State apply that swap
+  \EndWhile
+\EndIf
+\State \Return $a$ and its feasibility status
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Genetic Algorithm}
+The GA (Algorithm~\ref{alg:ga}) encodes a composition as an integer chromosome of length $N$, so that every chromosome is a valid composition and no decoding step is needed. Table~\ref{tab:ga} lists its settings. Fitness is the key $\kappa$. A random population usually starts entirely infeasible, so the rules first drive the search towards feasibility and only then towards utility. A static-penalty variant with fitness $U-\lambda V$ is also available for comparison.
+
+\begin{algorithm}[t]
+\caption{Genetic Algorithm Composer}\label{alg:ga}
+\footnotesize
+\begin{algorithmic}[1]
+\Require population $P$, generations $G$, rates $p_c,p_m$, tournament $k$, elites $e$, stagnation limit $s$
+\State create $P$ random chromosomes; evaluate $\kappa$
+\State (GA+Greedy only) replace two chromosomes with the Greedy-Repair and Greedy-Local results
+\State $a^{\text{best}} \gets$ individual with the highest $\kappa$
+\For{$g=1$ to $G$}
+  \State $E\gets$ top $e$ individuals
+  \State select parent pairs by tournament of size $k$
+  \State with probability $p_c$, apply uniform crossover to a pair
+  \State reset each child gene with probability $p_m$ to a different candidate of the same task
+  \State population $\gets E\,\cup$ children ($P-e$ of them); evaluate $\kappa$
+  \If{$\kappa$ improved} update $a^{\text{best}}$; reset stagnation counter
+  \Else\ increment the counter
+  \EndIf
+  \If{counter $\ge s$} \textbf{break}
+  \EndIf
+\EndFor
+\State \Return $a^{\text{best}}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{table}[t]
+\centering
+\caption{GA Settings}\label{tab:ga}
+\footnotesize
+\begin{tabular}{ll}
+\toprule
+Parameter & Value \\
+\midrule
+Population size $P$ & 100 \\
+Maximum generations $G$ & 300 \\
+Selection & Tournament, $k=3$ \\
+Crossover & Uniform, $p_c=0.9$ \\
+Mutation & Random reset, $p_m=1/N$ per gene \\
+Elitism & Best 2 individuals, $e=2$ \\
+Early stop & 80 generations without improvement \\
+Constraint handling & Deb's rules (default) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Hybrid and Reference Solvers}
+\textbf{GA+Greedy} seeds the initial population with the Greedy-Repair and Greedy-Local solutions. Elitism preserves the best seed, so the hybrid is never worse than Greedy-Repair.
+
+\textbf{Optimal-MILP} solves the 0-1 program with variables $x_{ij}$: maximize $\sum_{ij} u_{ij}x_{ij}$ subject to $\sum_j x_{ij}=1$ for every task and three linear QoS rows, with reliability in log form. The model is exact because all terms are linear. We solve it with HiGHS~\cite{huangfu2018} through SciPy~\cite{virtanen2020}. It gives the true optimum $U^{*}$ and also proves infeasibility. Unit tests confirm that it agrees with brute-force enumeration on small instances.
+
+\textbf{Random} search keeps the best of 30,000 uniform samples, close to the worst-case GA budget of 29,500 evaluations.
+
+\subsection{Computational Complexity}
+Table~\ref{tab:complexity} summarizes the worst-case cost of each composer. Evaluating one composition costs $O(N)$ in general, but a Greedy-Repair swap changes only one term of each sum. Its new aggregates are the current total minus the old term plus the new one, so all $NM$ swaps are scored in $O(NM)$ per step. The GA evaluates $P$ chromosomes per generation, so its cost per generation scales with $P$ and $N$ but not with $M$, because a gene is only an index. GA runtime still rises with $M$ in Section~\ref{sec:results}, because larger spaces delay stagnation and the run lasts more generations: mean evaluations grow from about 12,700 at $M=10$ to 21,500 at $M=100$. Early stopping usually ends the run well before $G$ generations.
+
+\begin{table}[t]
+\centering
+\caption{Worst-Case Time Complexity of the Composers}\label{tab:complexity}
+\footnotesize
+\begin{tabular}{ll}
+\toprule
+Composer & Time \\
+\midrule
+Greedy-Local & $O(NM)$ \\
+Greedy-Repair & $O(T\cdot NM)$, with $T\le 10NM$ steps \\
+GA, GA+Greedy & $O(G\cdot P\cdot N)$, plus seeding for the hybrid \\
+Random & $O(S\cdot N)$ for $S$ samples \\
+Optimal-MILP & Exponential in the worst case \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Experimental Setup}\label{sec:setup}
+
+\subsection{Tool Choice}
+We used a custom Python model rather than CloudSim~\cite{calheiros2011}. CloudSim simulates data-center resources such as hosts, virtual machines and scheduling. Our problem is instead a combinatorial selection over known QoS values, so a simulator would add no fidelity to it. A custom model also allows the exact solver and thousands of repeated runs. The problem statement permits either tool.
+
+\subsection{Implementation}
+The model is written in Python with NumPy and SciPy~\cite{virtanen2020}. A problem instance holds three $N\times M$ matrices, and a composition is an integer vector. One evaluation routine accepts a single composition or a whole population, so the GA evaluates each generation as one array operation. All composers return the same result record, which holds the composition, aggregated QoS, utility, violation, feasibility, runtime and evaluation count. Every random generator is seeded, so all results can be reproduced. A suite of 60 unit tests validates aggregation against hand calculation, the utility formula, the tightness edge cases, MILP agreement with brute force, the reported feasibility of every composer, and GA reproducibility.
+
+\subsection{Data}
+QoS values are synthetic, with ranges loosely following the QWS dataset~\cite{almasri2007}. Each candidate has a hidden tier $q\sim U(0,1)$. Latency and reliability quality each mix $q$ with independent noise, using correlation 0.6. Cost rises with $q$. This builds in the real trade-off: better services cost more. Latency spans roughly 30--1900\,ms per service, cost 0.1--18 units, and reliability 0.95--0.9999. Weights are equal, $w_L=w_C=w_R=1/3$.
+
+\subsection{Metrics}
+\emph{Success rate} is the share of solvable instances for which a composer returns a feasible composition. \emph{Optimality gap} is $(U^{*}-U)/U^{*}$ over successful runs. \emph{Runtime} is the wall-clock time per instance.
+
+\subsection{Experiments}
+Each setting uses 30 random instances with fixed seeds, 1,320 instances in total. Default size is $N=10$, $M=20$. We sweep absolute $\tau$ (12 levels) and relative $\rho$ (8 levels), scale $N\in\{5,10,20,40\}$ and $M\in\{10,20,50,100\}$ at $\rho=0.95$, tighten one constraint at a time against all three, compare constraint handling, and record convergence at $N=20$, $M=30$. The same instances are reused across tightness levels, which allows paired Wilcoxon signed-rank tests on quality. Those $p$-values are not corrected for multiple comparisons.
+
+\section{Results and Analysis}\label{sec:results}
+
+\subsection{Absolute Tightness}
+Fig.~\ref{fig:absolute} shows the share of instances solved. The share of solvable instances falls from 30/30 at $\tau=0.65$ to 3/30 at $\tau=0.70$, and to none from $\tau=0.75$. Across these instances, $\tau^{*}$ averaged 0.680 and ranged from 0.661 to 0.703. Greedy-Local fails much earlier, solving 21/30 instances at $\tau=0.4$ and 1/30 at $\tau=0.5$. Random search holds until $\tau=0.6$. The hard region is therefore a very narrow band of $\tau$, which is why we use $\rho$ in the rest of the evaluation. No composer ever claimed feasibility on an unsolvable instance.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{absolute_tightness}
+\caption{Share of instances solved vs absolute tightness ($N=10$, $M=20$). Greedy-Repair and GA overlap with GA+Greedy.}
+\label{fig:absolute}
+\end{figure}
+
+\subsection{Success Rate vs Relative Tightness}
+Table~\ref{tab:success} and Fig.~\ref{fig:success} give the main result. Greedy-Local drops to 3\% by $\rho=0.7$, because its unconstrained choice breaks the limits. Random search collapses at $\rho=0.95$. Greedy-Repair, the GA and the hybrid all stay at 100\% up to $\rho=0.98$. At $\rho=1$, the feasible set is tiny and success falls to 17\%, 37\% and 43\%. The hybrid solves 8 more instances than Greedy-Repair here ($p=0.0078$). The GA's lead over Greedy-Repair at this point, 9 wins to 3, is not significant ($p=0.17$).
+
+\begin{table}[t]
+\centering
+\caption{Success Rate vs Relative Tightness (30 Instances per Row)}\label{tab:success}
+\resizebox{\columnwidth}{!}{\input{tables/success_rho.tex}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{success_rho}
+\caption{Success rate vs relative tightness. All instances are solvable.}
+\label{fig:success}
+\end{figure}
+
+\subsection{Solution Quality}
+Table~\ref{tab:gap} and Fig.~\ref{fig:gap} report the optimality gap. Random search stays 7--9\% from the optimum. The other composers are far closer: below 0.35\% on average at every level. From $\rho=0.85$, the GA is noticeably worse than Greedy-Repair, significantly so at $\rho=0.85$ ($p=0.036$) and $\rho=0.90$ ($p=0.0046$). The hybrid has the lowest gap for $0.8\le\rho\le0.98$, and beats the plain GA at $\rho=0.85$, 0.90, 0.95 and 0.98 ($p=0.0062$, $3.8\times10^{-4}$, 0.046 and 0.035). At loose settings ($\rho\le0.7$), all three are within 0.06\% of the optimum. The near-zero gaps at $\rho=1$ reflect a very small feasible set and only the runs that succeeded, so they do not indicate better performance.
+
+\begin{table}[t]
+\centering
+\caption{Optimality Gap in \%, with the Share of Runs Reaching the Optimum in \% in Brackets. ``--'' Means Fewer than 5 Successes}\label{tab:gap}
+\resizebox{\columnwidth}{!}{\input{tables/gap_rho.tex}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{gap_rho}
+\caption{Optimality gap vs relative tightness (mean $\pm$ 95\% CI, successful runs with at least 5 successes per point).}
+\label{fig:gap}
+\end{figure}
+
+\subsection{Runtime and Scalability}
+Table~\ref{tab:runtime} gives mean runtimes across all $\rho$ levels. Table~\ref{tab:scale} and Fig.~\ref{fig:scale} show scaling at $\rho=0.95$. Greedy-Repair, the GA and the hybrid kept a 100\% success rate at every size tested, while Random failed for all $N\ge10$. Their quality diverges with size. The GA's gap grows from 0.12\% at $N=5$ to 0.50\% at $N=40$, and to 0.55\% at $M=100$, because its budget is fixed while the search space grows. Greedy-Repair improves, from 0.21\% to 0.022\% as $N$ grows. With more tasks and candidates, a single swap changes the totals only slightly, so repair rarely overshoots. Runtime at $N=40$ was 2.9\,ms for Greedy-Repair, 41\,ms for the hybrid, 92\,ms for the MILP and 131\,ms for the GA. The hybrid is faster than the GA because it starts near-optimal and its stagnation stop fires sooner.
+
+\begin{table}[t]
+\centering
+\caption{Mean Runtime per Instance over All $\rho$ Levels ($N=10$, $M=20$)}\label{tab:runtime}
+\footnotesize
+\input{tables/runtime.tex}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Scalability at $\rho=0.95$: Mean Gap and Runtime. GR = Greedy-Repair, G+G = GA+Greedy}\label{tab:scale}
+\resizebox{\columnwidth}{!}{\input{tables/scale.tex}}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{scalability}
+\caption{Scalability at $\rho=0.95$: runtime and optimality gap against the number of tasks $N$ (with $M=20$) and candidates $M$ (with $N=10$). Both axes are logarithmic.}
+\label{fig:scale}
+\end{figure*}
+
+\subsection{Single vs Combined Constraints}
+Fig.~\ref{fig:multi} separates the constraints. At $\tau=0.8$, each single constraint was solvable in 30/30 instances, yet all three together were solvable in 0/30. Multi-constraint interaction, not any one limit, is therefore the source of difficulty. Cost is the attribute that the local choice violates first, since a balanced utility favors premium services: at $\tau=0.65$, Greedy-Local met the latency and reliability limits in all 30 instances but the cost limit in none. In this experiment, the only case where Greedy-Repair missed existing solutions was the combined one at $\tau=0.65$, where it solved 28/30.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{single_vs_multi}
+\caption{Success rate when one constraint is tightened at a time, and when all three are, at absolute tightness 0.65 and 0.8.}
+\label{fig:multi}
+\end{figure}
+
+\subsection{GA Constraint Handling and Convergence}
+Table~\ref{tab:handling} compares Deb's rules with static penalties $\lambda=1,10,100$ on a separate set of 30 instances. All variants reached 100\% at $\rho=0.9$ and 0.95. At $\rho=1$ the success rates were 37\%, 33\%, 33\% and 30\%, against 40\% for the hybrid on the same instances. The 95\% confidence intervals of the gaps overlap across the GA variants. The choice of constraint handling thus had less effect than seeding, and Deb's rules need no $\lambda$ tuning.
+
+\begin{table}[t]
+\centering
+\caption{GA Constraint Handling: Success Rate / Gap in \%}\label{tab:handling}
+\resizebox{\columnwidth}{!}{\input{tables/handling.tex}}
+\end{table}
+
+Fig.~\ref{fig:conv} shows convergence at $N=20$, $M=30$, $\rho=0.95$. The plain GA has no feasible solution at generation 10, feasible solutions in 90\% of runs by generation 25, and in all runs by generation 50. Its mean $U/U^{*}$ then rises to 0.979 at generation 50 and 0.996 at generation 300. The hybrid starts at 0.9997, already above the final GA result.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{convergence}
+\caption{GA convergence at $N=20$, $M=30$, $\rho=0.95$, averaged over 30 instances. (a) Best utility relative to the optimum. (b) Share of the population that is feasible.}
+\label{fig:conv}
+\end{figure}
+
+\section{Discussion}\label{sec:discussion}
+The results give a clear comparison of the two requested composers. \textbf{Greedy-Repair} offers the best quality for the time spent: near-optimal results in 1--3\,ms. Its weakness is the extreme edge of feasibility, where single swaps become trapped. \textbf{The GA} is more robust at that edge, because a population explores several regions at once, but with a fixed budget its precision falls as instances grow. \textbf{GA+Greedy} combines the two, with the highest success rate at $\rho=1$ and the lowest gap for $0.8\le\rho\le0.98$. The hybrid does not rescue every failure, however: at $\tau=0.65$ in the single-versus-combined experiment, the plain GA solved all 30 instances while the hybrid solved 29, so seeding can reduce diversity.
+
+The two composers also fail in different ways. Greedy-Repair is deterministic, so a dead end on an instance is permanent: running it again gives the same answer. The GA is stochastic, so a failed run can be repeated with a new seed, which offers a simple way to trade time for reliability. This difference also suggests a practical deployment rule. A system can run Greedy-Repair first, because it costs about a millisecond, and call the GA only if repair reports failure or more quality is worth the extra time. The hybrid follows the same logic within a single run.
+
+Our measurement of tightness also matters for fair comparison. Under absolute $\tau$, a level such as 0.7 mixes instances that are unsolvable with instances that are barely solvable. A success rate computed there rests on very few instances: only 3 of 30 at $\tau=0.7$. Relative tightness removes this effect, because every instance contributes at every level, so the composers are compared on equal terms.
+
+The MILP solved every instance here in under 0.5\,s, excluding the bisection used to find $\tau^{*}$. It is the quality reference in this study, not a competitor, and on these sizes it is a viable method in its own right. The heuristics are valuable where such a linear model does not hold, such as parallel branches where latency is a maximum, or where millisecond decisions are needed for online re-composition. Those settings were not evaluated in this work.
+
+\textbf{Threats to validity.} The QoS data is synthetic, so real services may correlate differently. Only sequential workflows were tested. Runtimes were measured with 10 parallel worker processes, so absolute values carry some noise. GA results depend on the fixed budget, and a larger budget would narrow its gap at a proportional time cost.
+
+\section{Conclusion}\label{sec:conclusion}
+We modeled candidate services with QoS vectors, implemented a greedy and a GA composer, and compared their success rate and quality under varying constraint tightness, using an exact optimum as reference. Local selection fails once constraints bind. Greedy-Repair, the GA and the hybrid all stay feasible to within 2\% of the feasibility limit and within 0.35\% of the optimum. Greedy-Repair is about 40 times faster than the GA, the GA is more robust at the limit, and the hybrid gives the best balance. Each constraint alone is easy, and the difficulty comes from combining them. Future work will add parallel and loop workflow patterns, real QWS data, and comparison with other metaheuristics.
+
+\section*{Code Availability}
+Source code, experiment scripts and raw results accompany this report: [add GitHub link or zip file name].
+
+\begin{thebibliography}{00}
+\bibitem{sheng2014} Q. Z. Sheng, X. Qiao, A. V. Vasilakos, C. Szabo, S. Bourne, and X. Xu, ``Web services composition: A decade's overview,'' \emph{Inf. Sci.}, vol. 280, pp. 218--238, 2014.
+\bibitem{jula2014} A. Jula, E. Sundararajan, and Z. Othman, ``Cloud computing service composition: A systematic literature review,'' \emph{Expert Syst. Appl.}, vol. 41, no. 8, pp. 3809--3824, 2014.
+\bibitem{zeng2004} L. Zeng, B. Benatallah, A. H. H. Ngu, M. Dumas, J. Kalagnanam, and H. Chang, ``QoS-aware middleware for Web services composition,'' \emph{IEEE Trans. Softw. Eng.}, vol. 30, no. 5, pp. 311--327, May 2004.
+\bibitem{ardagna2007} D. Ardagna and B. Pernici, ``Adaptive service composition in flexible processes,'' \emph{IEEE Trans. Softw. Eng.}, vol. 33, no. 6, pp. 369--384, Jun. 2007.
+\bibitem{yu2007} T. Yu, Y. Zhang, and K.-J. Lin, ``Efficient algorithms for Web services selection with end-to-end QoS constraints,'' \emph{ACM Trans. Web}, vol. 1, no. 1, art. no. 6, May 2007.
+\bibitem{alrifai2009} M. Alrifai and T. Risse, ``Combining global optimization with local selection for efficient QoS-aware service composition,'' in \emph{Proc. 18th Int. Conf. World Wide Web}, Madrid, Spain, 2009, pp. 881--890.
+\bibitem{canfora2005} G. Canfora, M. Di Penta, R. Esposito, and M. L. Villani, ``An approach for QoS-aware service composition based on genetic algorithms,'' in \emph{Proc. Genetic Evol. Comput. Conf. (GECCO)}, Washington, DC, USA, 2005, pp. 1069--1075.
+\bibitem{deb2000} K. Deb, ``An efficient constraint handling method for genetic algorithms,'' \emph{Comput. Methods Appl. Mech. Eng.}, vol. 186, nos. 2--4, pp. 311--338, 2000.
+\bibitem{huangfu2018} Q. Huangfu and J. A. J. Hall, ``Parallelizing the dual revised simplex method,'' \emph{Math. Program. Comput.}, vol. 10, no. 1, pp. 119--142, 2018.
+\bibitem{virtanen2020} P. Virtanen \emph{et al.}, ``SciPy 1.0: Fundamental algorithms for scientific computing in Python,'' \emph{Nature Methods}, vol. 17, no. 3, pp. 261--272, 2020.
+\bibitem{calheiros2011} R. N. Calheiros, R. Ranjan, A. Beloglazov, C. A. F. De Rose, and R. Buyya, ``CloudSim: A toolkit for modeling and simulation of cloud computing environments and evaluation of resource provisioning algorithms,'' \emph{Softw. Pract. Exper.}, vol. 41, no. 1, pp. 23--50, 2011.
+\bibitem{almasri2007} E. Al-Masri and Q. H. Mahmoud, ``QoS-based discovery and ranking of Web services,'' in \emph{Proc. 16th Int. Conf. Comput. Commun. Netw. (ICCCN)}, Honolulu, HI, USA, 2007, pp. 529--534.
+\end{thebibliography}
+
+\end{document}
