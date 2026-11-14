@@ -10,6 +10,7 @@ from __future__ import annotations
 import time
 
 import numpy as np
+from scipy import sparse
 from scipy.optimize import Bounds as VarBounds
 from scipy.optimize import LinearConstraint, milp
 
@@ -17,7 +18,8 @@ from ..model import ProblemInstance
 from .base import CompositionResult, build_result, selection_key
 
 
-def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0) -> CompositionResult:
+def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0,
+               feasibility_only: bool = False) -> CompositionResult:
     """Optimal composition via MILP.
 
     Variables x[i, j] in {0, 1}: task i uses candidate j.
@@ -28,18 +30,27 @@ def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0) -> Com
              sum_ij log rel[i, j] x[i, j] >= log min_reliability
     If the problem is infeasible the result has ``feasible=False`` and
     status "infeasible"; its assignment is the unconstrained optimum.
+
+    ``feasibility_only`` drops the objective, so the solver stops at the first
+    feasible composition; that is much faster and enough for bisection.
+    The result history records HiGHS's proven upper bound on utility
+    ("upper_bound") and its node count. When the time limit is hit, the
+    composition found so far may not be optimal, and the bound shows how far
+    from optimal it can be at most.
     """
     start = time.perf_counter()
     n, m = problem.n_tasks, problem.n_candidates
     c = problem.constraints
-    one_per_task = LinearConstraint(np.kron(np.eye(n), np.ones(m)), 1, 1)
+    one_per_task = LinearConstraint(sparse.kron(sparse.identity(n), np.ones((1, m)), format="csr"),
+                                    1, 1)
     qos = LinearConstraint(
         np.vstack([problem.latency.ravel(), problem.cost.ravel(), -problem.log_rel.ravel()]),
         -np.inf,
         [c.max_latency, c.max_cost, -np.log(c.min_reliability)],
     )
     options = {"time_limit": time_limit} if time_limit is not None else {}
-    res = milp(-problem.local_utility.ravel(), constraints=[one_per_task, qos],
+    objective = np.zeros(n * m) if feasibility_only else -problem.local_utility.ravel()
+    res = milp(objective, constraints=[one_per_task, qos],
                integrality=np.ones(n * m), bounds=VarBounds(0, 1), options=options)
 
     if res.x is None:
@@ -48,7 +59,13 @@ def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0) -> Com
     else:
         status = "optimal" if res.status == 0 else f"time_limit(status={res.status})"
         assignment = res.x.reshape(n, m).argmax(axis=1)
-    return build_result(problem, "Optimal-MILP", assignment, start, evaluations=0, status=status)
+    history = {}
+    bound = getattr(res, "mip_dual_bound", None)
+    if not feasibility_only and bound is not None and np.isfinite(bound):
+        history = {"upper_bound": float(-bound),
+                   "node_count": int(getattr(res, "mip_node_count", 0) or 0)}
+    return build_result(problem, "Optimal-MILP", assignment, start, evaluations=0,
+                        status=status, history=history)
 
 
 def critical_tightness(problem: ProblemInstance, tol: float = 1e-3,
@@ -61,7 +78,10 @@ def critical_tightness(problem: ProblemInstance, tol: float = 1e-3,
     relative to each instance's own limit: rho = tau / tau_star.
     """
     def feasible(tightness: float) -> bool:
-        return solve_milp(problem.with_tightness(tightness), time_limit).feasible
+        # A time-out without a solution counts as infeasible, so tau_star can
+        # be slightly underestimated on very large instances.
+        return solve_milp(problem.with_tightness(tightness), time_limit,
+                          feasibility_only=True).feasible
 
     if feasible(1.0):
         return 1.0

@@ -1,244 +1,283 @@
-# Phase 3 Results and Analysis
+# Results on Real QoS Data: QWS 2.0 and WS-DREAM
 
-All numbers come from `results/tables/*.csv`. Those tables are built from the raw per-run
-files in `results/raw/` by `experiments/make_figures.py`. Every setting uses 30
-random instances with fixed seeds, and every instance is also solved exactly with
-the MILP.
+All numbers come from `results/qws/tables/` and `results/wsdream/tables/`. Those tables
+are built from the per-run files in `results/<dataset>/raw/`. Every setting uses 30
+instances with fixed seeds, and every instance is also solved exactly with the MILP.
 
-To reproduce everything (about 2 minutes on 10 worker processes):
+To reproduce everything (about 2 minutes per dataset):
 
 ```bash
-python experiments/run_experiments.py --runs 30
-python experiments/make_figures.py
+python scripts/download_data.py
 ```
 
-## 1. Experimental setup
+```bash
+python experiments/run_experiments.py --dataset qws
+```
 
-| Item | Value |
+```bash
+python experiments/run_experiments.py --dataset wsdream
+```
+
+```bash
+python experiments/make_figures.py --dataset qws
+```
+
+```bash
+python experiments/make_figures.py --dataset wsdream
+```
+
+The whole-dataset experiment (E7) has its own script, which takes a few minutes per dataset:
+
+```bash
+python experiments/run_full_dataset.py --dataset qws
+```
+
+```bash
+python experiments/run_full_dataset.py --dataset wsdream
+```
+
+## 1. Data
+
+| | QWS 2.0 | WS-DREAM (dataset 1) |
+|---|---|---|
+| Services used | 2,507 (none dropped) | 5,577 (248 dropped: valid for under 50 % of users) |
+| Latency | Response Time, measured (ms) | Response time seen by one user, measured (ms) |
+| Reliability | Reliability column, measured (0.33–0.89) | Share of 339 users with a valid call (0.50–1.00) |
+| Cost | AWS EC2 t3 hourly price, by throughput tier | AWS EC2 t3 hourly price, by throughput tier |
+
+**Cost.** Neither dataset has a price. Each service gets the hourly price of the AWS EC2
+t3 size (nano to xlarge, us-east-1, $0.0052–$0.1664 per hour) that matches its measured
+throughput rank. This produces a real trade-off in both datasets: higher-priced services
+have lower latency (Spearman ρ = −0.35 on QWS, −0.54 on WS-DREAM).
+
+**Instances.** N × M distinct services are drawn without replacement and split at random
+into N tasks. Neither dataset labels services by function, so the split cannot follow
+functions. On WS-DREAM, each instance is built for one random user, using only the
+services that user observed successfully.
+
+**Feasibility limit.** For N = 10 and M = 20, the critical tightness τ\* averaged 0.904
+on QWS (range 0.876–0.926) and 0.962 on WS-DREAM (range 0.922–0.976). The constraints
+therefore bind only at high tightness, which is why all main experiments use relative
+tightness ρ = τ / τ\*.
+
+## 2. Did we solve Problem Statement 27?
+
+| Requirement in the problem statement | Where it is met |
 |---|---|
-| Workflow | Sequential, N tasks, M candidates per task |
-| Default size | N = 10, M = 20 (search space 20^10 ≈ 10^13) |
-| QoS data | Synthetic, QWS-like ranges, built-in cost-vs-quality trade-off (`qos/generator.py`) |
-| Utility | SAW over normalised aggregates, equal weights |
-| Composers | Greedy-Local, Greedy-Repair, GA, GA+Greedy (hybrid), Random (30,000 samples) |
-| Reference | Optimal-MILP (HiGHS via `scipy.optimize.milp`) |
-| GA settings | P = 100, ≤ 300 generations, tournament k = 3, uniform crossover 0.9, mutation 1/N, elitism 2, stop after 80 stagnant generations, Deb's rules |
-| Runs | 30 instances per setting; 1,320 instances and 7,440 result rows in total, MILP included |
-| Machine | Python 3.13, NumPy 2.4, SciPy 1.17; 10 parallel worker processes, single-threaded each |
+| Composite services must satisfy multiple QoS constraints simultaneously | Latency, cost and reliability are hard end-to-end limits enforced together |
+| Model candidate services with QoS vectors | Every candidate is a real service with a (latency, cost, reliability) vector from QWS 2.0 or WS-DREAM |
+| Implement a greedy composer | Greedy-Local (baseline) and Greedy-Repair (`qos/composers/greedy.py`) |
+| Implement a GA-based composer | GA with Deb's rules or penalty, and a GA+Greedy hybrid (`qos/composers/ga.py`) |
+| Compare success rate under different constraint tightness | E1 (absolute τ and relative ρ), E4, E5 below |
+| Compare solution quality under different constraint tightness | Gap to the exact MILP optimum, E1 to E3 below |
+| Tool: custom Java/Python model | Python model, 67 unit tests |
 
-### Metrics
+**Yes.** Every element of the proposed solution is implemented and evaluated on two real
+QoS datasets. Two caveats must be stated in the report:
+- Cost is derived from a real price list, not measured per service.
+- WS-DREAM reliability is an observed success ratio, used as a proxy.
 
-- **Success rate.** The share of solvable instances where the composer returns a
-  feasible composition. "Solvable" means the MILP found a feasible composition.
-- **Optimality gap.** `(U* − U) / U*` in %, computed over successful runs only.
-- **Optimal hits.** The share of successful runs that reach the exact optimum.
-- **Runtime.** Wall-clock milliseconds per instance.
+## 3. Results
 
-### Two ways to set constraint tightness
+### E1: Success rate vs relative tightness (N = 10, M = 20)
 
-**Absolute tightness τ** interpolates each bound between its worst and best aggregate
-value (`docs/design.md` §2.6). Every instance has a **critical tightness τ\***: the
-largest τ that still has a feasible composition. The MILP finds τ\* by bisection to
-within 10^-3.
+| ρ | QWS: Greedy-Local / Greedy-Repair / GA / GA+Greedy / Random | WS-DREAM: same order |
+|---|---|---|
+| 0.50–0.85 | 1.00 / 1.00 / 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 / 1.00 / 1.00 |
+| 0.90 | 1.00 / 1.00 / 1.00 / 1.00 / 0.93 | 1.00 / 1.00 / 1.00 / 1.00 / 0.97 |
+| 0.95 | 0.73 / 1.00 / 1.00 / 1.00 / 0.00 | 1.00 / 1.00 / 1.00 / 1.00 / 0.70 |
+| 0.98 | 0.23 / 1.00 / 1.00 / 1.00 / 0.00 | 0.80 / 1.00 / 1.00 / 1.00 / 0.03 |
+| **1.00** | 0.00 / **0.63** / **0.70** / **0.90** / 0.00 | 0.00 / **0.63** / **0.83** / **0.80** / 0.00 |
 
-For N=10 and M=20, τ\* averaged 0.680, ranging from 0.661 to 0.703. Above τ ≈ 0.70
-almost no instance is solvable, so the hard region in absolute τ is a narrow band.
+- **Greedy-Local** (picking the best service per task) breaks the limits from ρ = 0.95 on
+  QWS and from ρ = 0.98 on WS-DREAM.
+- **Random search** collapses from ρ = 0.90–0.95. The search space (about 10^13
+  compositions) is far too large to sample blindly.
+- **Greedy-Repair, the GA and GA+Greedy** stay at 100 % up to ρ = 0.98 on both datasets.
+- **At the feasibility limit (ρ = 1)** the population-based methods are more robust than
+  greedy repair:
+  - QWS: 63 % (Greedy-Repair), 70 % (GA), 90 % (GA+Greedy).
+  - WS-DREAM: 63 %, 83 % and 80 %.
 
-The main experiments therefore use **relative tightness ρ = τ / τ\***. With ρ ≤ 1,
-every instance is solvable, and ρ → 1 is the edge of feasibility, where the feasible
-set is smallest.
+### E1: Solution quality
 
-## 2. Results
+Mean optimality gap (%) over successful runs:
 
-### E1a: Absolute tightness (Fig. 1)
+| ρ | QWS: Greedy-Repair / GA / GA+Greedy / Random | WS-DREAM |
+|---|---|---|
+| ≤ 0.90 | 0.000 / 0.000 / 0.000 / 5.4–6.2 | 0.000 / 0.000 / 0.000 / 3.5–3.6 |
+| 0.95 | 0.003 / 0.004 / 0.003 / – | 0.000 / 0.000 / 0.000 / 2.7 |
+| 0.98 | 0.023 / 0.012 / 0.023 / – | 0.000 / 0.006 / 0.000 / 2.3 |
 
-| τ | Solvable | Greedy-Local solved | Greedy-Repair / GA / GA+Greedy solved | Random solved |
-|---|---|---|---|---|
-| 0.0–0.2 | 30/30 | 30 | 30 / 30 / 30 | 30 |
-| 0.4 | 30/30 | 21 | 30 / 30 / 30 | 30 |
-| 0.5 | 30/30 | 1 | 30 / 30 / 30 | 30 |
-| 0.6 | 30/30 | 0 | 30 / 30 / 30 | 30 |
-| 0.65 | 30/30 | 0 | 30 / 30 / 30 | 1 |
-| 0.7 | 3/30 | 0 | 2 / 0 / 2 | 0 |
-| ≥ 0.75 | 0/30 | 0 | 0 | 0 |
+On real data, the three main composers almost always return the exact optimum when they
+succeed. The largest mean gap is 0.023 %. Random search stays 2–6 % from the optimum.
 
-When constraints are loose, the unconstrained choice (Greedy-Local) is optimal.
-Its success collapses between τ = 0.4 and 0.5, well before the instances become hard.
-No composer ever claimed feasibility on an unsolvable instance (sanity check = 0).
+Paired Wilcoxon signed-rank tests on normalised quality at ρ = 1 (ties dropped, not
+corrected for multiple comparisons):
 
-### E1b: Relative tightness (Figs. 2–5): main result
+| Comparison | QWS | WS-DREAM |
+|---|---|---|
+| GA+Greedy vs Greedy-Repair | better on 8, worse on 0; p = 0.0078 | better on 5, worse on 0; p = 0.0625 |
+| GA vs Greedy-Repair | 7 vs 5; p = 0.77 | 8 vs 4; p = 0.14 |
 
-Success rate (30 solvable instances per row):
+### E1: Runtime per instance (N = 10, M = 20)
 
-| ρ | Greedy-Local | Greedy-Repair | GA | GA+Greedy | Random |
+| Composer | QWS | WS-DREAM |
+|---|---|---|
+| Greedy-Local | 0.1–0.3 ms | 0.1 ms |
+| Greedy-Repair | 0.3–0.7 ms | 0.3–0.6 ms |
+| Random (30,000 samples) | 15–19 ms | 15–16 ms |
+| MILP (exact) | 16–22 ms | 16–19 ms |
+| GA+Greedy | 30–36 ms | 29–33 ms |
+| GA | 44–56 ms | 43–48 ms |
+
+### E2/E3: Scalability at ρ = 0.95
+
+- **Success.** Greedy-Repair, the GA and GA+Greedy keep 100 % success for
+  N ∈ {5, 10, 20, 40} and M ∈ {10, 20, 50, 100} on both datasets.
+  - On QWS, Greedy-Local falls from 87 % at N = 5 to 43 % at N = 40.
+  - Random fails for N ≥ 10 on QWS. On WS-DREAM it falls to 10 % at N = 20 and 0 % at N = 40.
+- **Quality.** Greedy-Repair and GA+Greedy stay within 0.006 % of the optimum. The GA's gap
+  rises to at most 0.030 % (QWS, M = 100).
+- **Runtime at N = 40:**
+
+| Composer | QWS | WS-DREAM |
+|---|---|---|
+| Greedy-Repair | 0.5 ms | 0.3 ms |
+| GA+Greedy | 47 ms | 44 ms |
+| MILP | 49 ms | 45 ms |
+| GA | 160 ms | 143 ms |
+
+### E4: Single constraints, pairs and all three together
+
+Each constraint group is tightened to a level relative to the instance's all-three
+limit τ\*.
+
+| Level | Single constraints | Any pair | All three |
+|---|---|---|---|
+| 0.9 × τ\* | 30/30 solvable | 30/30 solvable | 30/30 solvable |
+| 1.0 × τ\* | 30/30 | 30/30 | 30/30 |
+| 1.2 × τ\* | **30/30** | **0/30** | 0/30 |
+
+Results are identical on both datasets. **Every single constraint stays solvable beyond
+the all-three limit, while every pair is already infeasible.** The conflict appears as
+soon as two QoS attributes are constrained together, which is direct evidence for the
+multi-constraint gap in the problem statement.
+
+At 1.0 × τ\*, all three together is the hardest case for every composer:
+
+| | Greedy-Repair | GA | GA+Greedy |
+|---|---|---|---|
+| QWS, all three | 57 % | 70 % | 70 % |
+| WS-DREAM, all three | 77 % | 73 % | 87 % |
+| Any pair (both datasets) | ≥ 90 % | ≥ 93 % | ≥ 97 % |
+
+Greedy-Local fails on different attributes in each dataset:
+- QWS: reliability (3 % with reliability alone or latency + reliability).
+- WS-DREAM: latency (10 % with latency alone, 0 % with latency + cost).
+
+### E5: GA constraint handling at ρ = 1
+
+| | Deb's rules | Penalty λ = 1 | λ = 10 | λ = 100 | GA+Greedy |
 |---|---|---|---|---|---|
-| 0.50 | 0.967 | 1.000 | 1.000 | 1.000 | 1.000 |
-| 0.70 | 0.033 | 1.000 | 1.000 | 1.000 | 1.000 |
-| 0.80–0.90 | 0.000 | 1.000 | 1.000 | 1.000 | 1.000 |
-| 0.95 | 0.000 | 1.000 | 1.000 | 1.000 | 0.033 |
-| 0.98 | 0.000 | 1.000 | 1.000 | 1.000 | 0.000 |
-| **1.00** | 0.000 | **0.167** | **0.367** | **0.433** | 0.000 |
+| QWS success | 0.73 | **0.93** | 0.77 | 0.77 | 0.80 |
+| WS-DREAM success | 0.70 | **0.90** | 0.80 | 0.63 | 0.83 |
 
-Optimality gap (%, mean over successful runs) and optimal-hit rate:
+At ρ = 0.90 and 0.95, all variants reach 100 % with gaps ≤ 0.017 %. At the limit, a
+**mild penalty (λ = 1) is the most reliable choice on both datasets**. It lets the
+population cross slightly infeasible regions on its way to a feasible one. This was not
+tested for significance.
 
-| ρ | Greedy-Repair | GA | GA+Greedy | Random |
-|---|---|---|---|---|
-| 0.80 | 0.053 (67 %) | 0.088 (57 %) | 0.048 (70 %) | 8.07 |
-| 0.85 | 0.091 (63 %) | 0.194 (33 %) | 0.074 (80 %) | 8.07 |
-| 0.90 | 0.083 (70 %) | 0.321 (30 %) | 0.062 (77 %) | 8.91 |
-| 0.95 | 0.146 (63 %) | 0.336 (40 %) | 0.100 (67 %) | – (1 success) |
-| 0.98 | 0.213 (57 %) | 0.348 (37 %) | 0.156 (67 %) | – |
-
-Mean runtime per instance at N=10, M=20:
-
-| Composer | Runtime |
-|---|---|
-| Greedy-Local | 0.08 ms |
-| Greedy-Repair | 0.3–1.1 ms |
-| Random | ≈ 14 ms |
-| GA+Greedy | 26–35 ms |
-| GA | 38–49 ms |
-| MILP | 14–74 ms (the slowest point is ρ = 1) |
-
-Paired Wilcoxon signed-rank tests on normalised quality (`E1_wilcoxon.md`). Ties are
-dropped, and p-values are not corrected for multiple comparisons:
-
-- **GA is worse than Greedy-Repair** at ρ = 0.85 (p = 0.036) and ρ = 0.90 (p = 0.0046).
-  The other levels show no significant difference.
-- **GA+Greedy is better than GA** at ρ = 0.85, 0.90, 0.95 and 0.98
-  (p = 0.0062, 3.8·10^-4, 0.046, 0.035).
-- **GA+Greedy against Greedy-Repair.** The hybrid is never worse, by construction.
-  It is strictly better on 1–5 instances at each tested ρ from 0.80 to 0.98. At ρ = 1 it solves 8
-  instances that Greedy-Repair cannot, and is beaten on none (p = 0.0078).
-- **GA against Greedy-Repair at ρ = 1.** GA wins 9 instances and loses 3. That
-  difference is not significant (p = 0.17).
-
-### E2/E3: Scalability at ρ = 0.95 (Fig. 6)
-
-Greedy-Repair, GA and GA+Greedy keep a 100 % success rate at every N and M tested.
-Greedy-Local never exceeds 3 %, and Random fails for N ≥ 10. The quality trends diverge:
-
-| | N = 5 | N = 10 | N = 20 | N = 40 |
-|---|---|---|---|---|
-| GA gap % (optimal hits) | 0.12 (83 %) | 0.28 (50 %) | 0.31 (7 %) | 0.50 (0 %) |
-| Greedy-Repair gap % | 0.21 | 0.085 | 0.061 | 0.022 |
-| GA+Greedy gap % | 0.004 | 0.067 | 0.043 | 0.022 |
-| GA runtime (ms) | 34 | 44 | 74 | 131 |
-| Greedy-Repair runtime (ms) | 0.6 | 0.8 | 1.8 | 2.9 |
-| MILP runtime (ms) | 16 | 22 | 82 | 92 |
-
-| | M = 10 | M = 20 | M = 50 | M = 100 |
-|---|---|---|---|---|
-| GA gap % | 0.15 | 0.18 | 0.46 | 0.55 |
-| Greedy-Repair gap % | 0.20 | 0.088 | 0.051 | 0.047 |
-| GA+Greedy gap % | 0.12 | 0.081 | 0.042 | 0.047 |
-
-The GA has a fixed budget, so its gap grows with the search space (M^N). Greedy-Repair
-does better as instances grow. With more tasks and more candidates, a single swap
-changes the totals only slightly, so fine-grained repair rarely overshoots.
-
-### E4: One constraint against three together (Fig. 7)
-
-| Absolute τ | Latency only | Cost only | Reliability only | All three |
-|---|---|---|---|---|
-| Solvable at 0.8 | 30/30 | 30/30 | 30/30 | **0/30** |
-| Greedy-Local solved at 0.65 | 30/30 | 0/30 | 30/30 | 0/30 |
-| Greedy-Repair solved at 0.65 | 30/30 | 30/30 | 30/30 | 28/30 |
-
-Each constraint alone is easy: it can be met even at τ = 0.8. The three together
-cannot be, because they pull in opposite directions. Low cost needs cheap services,
-which are slower and less reliable. This is the multi-constraint gap named in the
-problem statement.
-
-Cost is the constraint that the utility-greedy choice breaks first, because a
-balanced utility still favours premium services. The only setting where
-Greedy-Repair failed to find an existing solution was the three-constraint case at
-τ = 0.65.
-
-### E5: GA constraint handling (Fig. 8)
-
-| ρ | Deb's rules | Penalty λ=1 | λ=10 | λ=100 | GA+Greedy |
-|---|---|---|---|---|---|
-| Success at 1.0 | 0.367 | 0.333 | 0.333 | 0.300 | 0.400 |
-| Gap % at 0.90 | 0.12 | 0.07 | 0.16 | 0.20 | 0.06 |
-| Gap % at 0.95 | 0.24 | 0.16 | 0.29 | 0.19 | 0.05 |
-
-All 95 % confidence intervals overlap. No constraint-handling rule wins clearly.
-Deb's rules are marginally the most reliable at ρ = 1, and they need no λ tuning.
-How the population is seeded matters much more than which rule ranks infeasible
-individuals.
-
-### E6: Convergence at N=20, M=30, ρ=0.95 (Fig. 9)
+### E6: GA convergence (N = 20, M = 30, ρ = 0.95)
 
 | Generation | 10 | 25 | 50 | 100 | 300 |
 |---|---|---|---|---|---|
-| GA: runs with a feasible solution | 0 % | 90 % | 100 % | 100 % | 100 % |
-| GA: mean U/U\* (0 while infeasible) | 0.000 | 0.864 | 0.979 | 0.991 | 0.996 |
-| GA+Greedy: mean U/U\* | 0.9997 | 0.9997 | 0.9997 | 0.9997 | 0.9997 |
+| QWS: runs with a feasible solution | 3 % | 100 % | 100 % | 100 % | 100 % |
+| QWS: mean U/U\* | 0.03 | 0.972 | 0.990 | 0.9985 | 0.9999 |
+| WS-DREAM: runs with a feasible solution | 93 % | 100 % | 100 % | 100 % | 100 % |
+| WS-DREAM: mean U/U\* | 0.907 | 0.988 | 0.996 | 0.9995 | 1.0000 |
+| GA+Greedy (both): mean U/U\* | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
 
-A random population starts with no feasible member. Deb's rules first push it
-towards feasibility, which takes about 25 generations. Only then does it optimise
-utility. After that, about half of the population stays feasible.
+### E7: Whole-dataset instances
 
-The hybrid starts where the plain GA ends after 300 generations. That is why its
-stagnation stop fires earlier, and why it is about 35 % faster than the plain GA.
+Each instance puts almost the whole dataset into one composition problem: 2,500 of the
+2,507 QWS services, or 5,500 of the 5,577 WS-DREAM services observed by one user. There
+are 30 random task splits per shape at ρ ∈ {0.90, 0.95, 0.98, 1.0}, which is 240
+instances per dataset. Tables: `results/<dataset>/tables/E7_full_summary.md`.
 
-## 3. Discussion
+| Shape | Compositions | τ\* mean (range) |
+|---|---|---|
+| QWS 10 × 250 | about 10^24 | 0.947 (0.938–0.958) |
+| QWS 50 × 50 | about 10^85 | 0.935 (0.930–0.940) |
+| WS-DREAM 10 × 550 | about 10^27 | 0.995 (0.989–0.997) |
+| WS-DREAM 50 × 110 | about 10^102 | 0.989 (0.978–0.994) |
 
-1. **The difficulty comes from combining constraints, not from any single one.**
-   Every single-attribute problem was solvable at τ = 0.8, and the combined problem
-   never was (E4). Local selection, the strategy most simple implementations use,
-   fails as soon as the constraints start to bind (E1).
-2. **Greedy-Repair is the best quality-per-millisecond composer.** It stays within
-   0.25 % of the optimum on average up to ρ = 0.98, at 1–3 ms, roughly 40× faster
-   than the GA. Its weakness is the very edge of feasibility: at ρ = 1 it finds a
-   solution in only 17 % of instances, because single swaps get stuck in local dead
-   ends.
-3. **The GA is more robust at the edge but less precise.** At ρ = 1 it succeeds about
-   twice as often as Greedy-Repair. With a fixed budget, though, its optimality gap
-   grows with N and M, and it is significantly worse than Greedy-Repair at
-   ρ = 0.85–0.90.
-4. **The hybrid GA+Greedy combines both strengths.** It has the highest success rate
-   at ρ = 1 (43 %), and the lowest or equal-lowest gap for 0.8 ≤ ρ ≤ 0.98 and at every
-   N and M at ρ = 0.95. It is also faster than the plain GA. At loose settings
-   (ρ ≤ 0.7) the plain GA has a marginally lower gap, within the confidence intervals.
-5. **Random search is not competitive.** Its gap is 7–9 %, and it fails from ρ = 0.95,
-   or from N ≥ 10. This shows that the search space is far too large to sample blindly.
-6. **The exact MILP is fast at these sizes** (≤ 0.1 s). It exists here as the quality
-   reference. The heuristics still matter where an exact linear model is not
-   available or not practical:
-   - non-linear aggregation, such as parallel branches (max latency) and loops;
-   - dynamic or online re-composition, which needs millisecond answers;
-   - much larger instances.
+Success rate at the feasibility limit (ρ = 1):
 
-   Greedy-Repair keeps a millisecond budget throughout.
+| Shape | Greedy-Repair | GA | GA+Greedy | Greedy-Local | Random |
+|---|---|---|---|---|---|
+| QWS 10 × 250 | 0.67 | 0.13 | 0.70 | 0.00 | 0.00 |
+| QWS 50 × 50 | 0.63 | 0.00 | 0.63 | 0.00 | 0.00 |
+| WS-DREAM 10 × 550 | 0.90 | 0.23 | 0.90 | 0.00 | 0.00 |
+| WS-DREAM 50 × 110 | 0.90 | 0.00 | 0.90 | 0.00 | 0.00 |
 
-## 4. Threats to validity
+**At ρ ≤ 0.98:**
+- Greedy-Repair and GA+Greedy succeed in 100 % of instances, within 0.004 % of the
+  optimum.
+- The GA succeeds in 97–100 %, but its gap is 0.06–0.49 %.
+- Greedy-Local already fails at ρ = 0.98 on QWS: 50 % for 10 × 250, 0 % for 50 × 50.
+- Random fails almost everywhere.
 
-- **Synthetic QoS data.** The data is synthetic, with a deliberate cost/quality
-  trade-off. Real QWS records may correlate differently.
-- **Workflow shape.** Only sequential workflows are tested. With parallel and choice
-  patterns, aggregation is no longer additive, which affects both the MILP and the
-  swap table.
-- **Runtime measurement.** Runtimes were measured with 10 worker processes running in
-  parallel, so absolute values carry some noise. The relative ordering is stable
-  across settings.
-- **Fixed GA budget.** The GA's budget is fixed (P = 100, ≤ 300 generations). A larger
-  budget would close part of its quality gap, at a proportional cost in time.
+**Mean runtime per instance:**
 
-## 5. Files
+| Composer | QWS | WS-DREAM |
+|---|---|---|
+| Greedy-Repair | 0.3–2.4 ms | 0.3–3.4 ms |
+| GA+Greedy | 22–38 ms | 21–36 ms |
+| GA | 61–135 ms | 70–131 ms |
+| MILP (exact) | 48–130 ms; slowest single solve 0.33 s | 82–152 ms; slowest 0.23 s |
 
-| File | Content |
-|---|---|
-| `figures/fig1_solved_vs_absolute_tightness.png` | E1a |
-| `figures/fig2_success_vs_relative_tightness.png` | E1b success rate |
-| `figures/fig3_gap_vs_relative_tightness.png` | E1b optimality gap |
-| `figures/fig4_runtime_vs_relative_tightness.png` | E1b runtime |
-| `figures/fig5_gap_distribution.png` | E1b gap distribution, ρ = 0.8 / 0.9 / 0.95 |
-| `figures/fig6_scalability.png` | E2 + E3 |
-| `figures/fig7_single_vs_multi_constraint.png` | E4 |
-| `figures/fig8_constraint_handling.png` | E5 |
-| `figures/fig9_convergence.png` | E6 |
-| `tables/*_summary.csv / .md` | Per-setting summaries |
-| `tables/E1_wilcoxon.*` | Significance tests |
-| `raw/*.csv`, `raw/E6_convergence.npz` | Per-run results |
+**The MILP solved all 480 instances to optimality,** within HiGHS's default 0.01 %
+gap. There are two reasons:
+- **Only 3 QoS constraints link the tasks.** A basic solution of the LP relaxation then
+  leaves at most 3 tasks split between candidates, so the solver needs very little
+  branching.
+- **Its "optimum" is within 0.01 % of the true optimum.** In 2 QWS and 8 WS-DREAM
+  instances, Greedy-Repair found a marginally better composition. The largest gap
+  between the MILP's solution and its proven bound was 0.01 %.
+
+## 4. Main findings
+
+1. **Combining constraints is the source of difficulty.** Every single constraint is
+   solvable past the point where every pair is infeasible, on both real datasets (E4).
+2. **Greedy-Repair is the fastest near-optimal composer.** It takes under 1 ms and is
+   optimal or within 0.023 % up to ρ = 0.98. It is the weakest of the three at the exact
+   feasibility limit (63 %).
+3. **The GA is more robust at the limit, but only on small instances.** At N = 10 and
+   M = 20 it reaches 70–83 % at ρ = 1, and mild penalty handling (λ = 1) raises this to
+   90–93 %. On whole datasets (E7) its fixed budget of about 30,000 evaluations is
+   too small: 0–23 % at ρ = 1, and gaps up to 0.49 %.
+4. **GA+Greedy is the best default.** It has 80–90 % success at the limit on small
+   instances, is never worse than Greedy-Repair, and is faster than the plain GA. On
+   whole datasets its results come almost entirely from the greedy seed.
+5. **Naive methods fail on real data.** Greedy-Local and Random break down as constraints
+   approach the limit and as the number of tasks grows.
+6. **Exact solving is practical for three QoS constraints, even on whole datasets.**
+   The MILP was optimal in every instance, at most 0.33 s with up to 5,500 binary
+   variables (E7). The case for heuristics is speed, about 1 ms for Greedy-Repair, and
+   settings a linear model cannot handle. It is not that the exact solver is too slow.
+
+## 5. Limitations
+
+- **Cost is derived** from a public price list by throughput tier, not measured per
+  service.
+- **WS-DREAM reliability is a proxy:** the share of users whose call returned a valid
+  measurement.
+- **Task grouping is random,** because the datasets do not label service functions.
+- **Only sequential workflows** were tested.
+- **Runtimes carry some noise:** they were measured with 10 parallel worker processes.
+- **MILP tolerance:** "optimal" means within HiGHS's default 0.01 % relative gap, so
+  reported optimality gaps are accurate to about ±0.01 %.
+- **Only three QoS constraints:** with more, the MILP may slow down. This was not tested.
+- **The report covers E1–E6 only.** E7 is in this file and the README, but not yet in
+  `report/report.tex`.

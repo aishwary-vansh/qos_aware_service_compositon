@@ -58,7 +58,13 @@ def line(ax, x, y, name, **kw):
                    markeredgecolor=SURFACE, markeredgewidth=0.8, **kw)[0]
 
 
+DATASET_LABEL = ""   # set from --dataset; stamped on every figure
+
+
 def save(fig, out: pathlib.Path, name: str):
+    if DATASET_LABEL:
+        fig.text(0.99, 0.995, f"Dataset: {DATASET_LABEL}", ha="right", va="top", fontsize=7,
+                 color=INK_MUTED)
     fig.savefig(out / f"{name}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"  figure {name}.png")
@@ -251,10 +257,12 @@ def fig_scalability(s_n: pd.DataFrame, s_m: pd.DataFrame, figs: pathlib.Path):
                                       [str(v) for v in sorted(s["label"].unique())])
             axes[row, col].minorticks_off()
         axes[0, col].set_yscale("log")
-        axes[1, col].set_yscale("log")
+        # Gaps are often exactly 0 on real data; symlog shows 0 where log cannot.
+        axes[1, col].set_yscale("symlog", linthresh=1e-3)
+        axes[1, col].set_ylim(bottom=0)
         axes[1, col].set_xlabel(xlabel)
     axes[0, 0].set_ylabel("Runtime (ms, log scale)")
-    axes[1, 0].set_ylabel("Optimality gap (%), log scale\n(successful runs)")
+    axes[1, 0].set_ylabel("Optimality gap (%), symlog scale\n(successful runs)")
     axes[0, 0].set_title("(a) Runtime vs N", loc="left")
     axes[0, 1].set_title("(b) Runtime vs M", loc="left")
     axes[1, 0].set_title("(c) Optimality gap vs N", loc="left")
@@ -267,35 +275,42 @@ def fig_scalability(s_n: pd.DataFrame, s_m: pd.DataFrame, figs: pathlib.Path):
     save(fig, figs, "fig6_scalability")
 
 
+ATTRIBUTE_MODES = ["latency only", "cost only", "reliability only", "latency + cost",
+                   "latency + reliability", "cost + reliability", "all three"]
+ATTRIBUTE_TICKS = ["Lat.", "Cost", "Rel.", "Lat.+\nCost", "Lat.+\nRel.", "Cost+\nRel.", "All 3"]
+
+
 def fig_attribute(s: pd.DataFrame, df: pd.DataFrame, figs: pathlib.Path):
-    modes = ["latency only", "cost only", "reliability only", "all three"]
+    """Single constraints, pairs and all three, at levels relative to the all-three tau_star."""
     names = ["Greedy-Local", "Greedy-Repair", "GA", "GA+Greedy"]
     levels = sorted(s["level"].unique())
-    fig, axes = plt.subplots(1, len(levels), figsize=(7.6, 3.3), sharey=True)
+    fig, axes = plt.subplots(len(levels), 1, figsize=(7.6, 2.2 * len(levels) + 0.6), sharey=True)
     width = 0.18
-    x = np.arange(len(modes))
-    for ax, level in zip(axes, levels):
+    x = np.arange(len(ATTRIBUTE_MODES))
+    for ax, level in zip(np.atleast_1d(axes), levels):
         d = s[s["level"] == level]
         solv = df[(df["level"] == level) & (df["algorithm"] == "Optimal-MILP")] \
-            .groupby("label")["opt_feasible"].mean().reindex(modes)
+            .groupby("label")["opt_feasible"].mean().reindex(ATTRIBUTE_MODES)
         ax.bar(x, solv.values, width=0.9, color=FEASIBLE_BAR, zorder=0,
                label="Solvable instances (MILP)")
         for k, name in enumerate(names):
-            vals = d[d["algorithm"] == name].set_index("label")["success_rate"].reindex(modes)
+            vals = d[d["algorithm"] == name].set_index("label")["success_rate"] \
+                .reindex(ATTRIBUTE_MODES)
             ax.bar(x + (k - 1.5) * width, vals.values, width=width - 0.03,
                    color=STYLE[name]["color"], label=name, zorder=2)
-        ax.set_xticks(x, ["Latency\nonly", "Cost\nonly", "Reliab.\nonly", "All\nthree"])
+        ax.set_xticks(x, ATTRIBUTE_TICKS)
         for xi, frac in zip(x, solv.values):
             if frac == 0:
-                ax.text(xi, 0.04, "no solvable\ninstance", ha="center", va="bottom",
-                        fontsize=7, color=INK_2, rotation=90)
-        ax.set_title(f"τ = {level}", loc="left")
-    axes[0].set_ylabel("Success rate (solvable instances)")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=5, bbox_to_anchor=(0.5, -0.04))
-    fig.suptitle("One constraint vs all three constraints together", x=0.01, ha="left",
+                ax.text(xi, 0.5, "none\nsolvable", ha="center", va="center", fontsize=7,
+                        color=INK_2)
+        ax.set_title(f"Tightened attributes at τ = {level} × τ* (τ* = all-three limit)",
+                     loc="left")
+        ax.set_ylabel("Success rate")
+    handles, labels = np.atleast_1d(axes)[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=5, bbox_to_anchor=(0.5, 0.0))
+    fig.suptitle("Single constraints, pairs and all three together", x=0.01, ha="left",
                  fontweight="bold", fontsize=10)
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    fig.tight_layout(rect=(0, 0.05, 1, 1))
     save(fig, figs, "fig7_single_vs_multi_constraint")
 
 
@@ -389,10 +404,14 @@ def significance(df: pd.DataFrame, taus) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Make Phase 3 tables and figures.")
-    parser.add_argument("--raw", default=str(ROOT / "results" / "raw"))
-    parser.add_argument("--out", default=str(ROOT / "results"))
+    parser.add_argument("--dataset", choices=("qws", "wsdream"), default="qws")
+    parser.add_argument("--raw", help="raw results folder (default results/<dataset>/raw)")
+    parser.add_argument("--out", help="output folder (default results/<dataset>)")
     args = parser.parse_args()
-    raw, out = pathlib.Path(args.raw), pathlib.Path(args.out)
+    global DATASET_LABEL
+    DATASET_LABEL = {"qws": "QWS 2.0", "wsdream": "WS-DREAM"}[args.dataset]
+    out = pathlib.Path(args.out or ROOT / "results" / args.dataset)
+    raw = pathlib.Path(args.raw or out / "raw")
     figs, tables = out / "figures", out / "tables"
     figs.mkdir(parents=True, exist_ok=True)
     tables.mkdir(parents=True, exist_ok=True)

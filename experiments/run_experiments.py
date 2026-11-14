@@ -5,7 +5,7 @@ Experiments (each over --runs random instances, fixed seeds):
   E1_relative    the same vs relative tightness rho = tau / tau_star
   E2_tasks       scalability in the number of tasks N
   E3_candidates  scalability in the number of candidates per task M
-  E4_attribute   one constraint tightened at a time vs all three together
+  E4_attribute   single constraints and pairs vs all three together
   E5_handling    GA constraint handling: Deb's rules vs static penalty
   E6_convergence GA and GA+Greedy convergence (full 300 generations)
 
@@ -17,10 +17,12 @@ a feasible composition. Absolute tau mixes two effects: some instances become
 unsolvable while others stay easy. Relative tightness rho keeps every instance
 solvable (rho <= 1) and puts rho -> 1 at the hard edge of feasibility.
 
+Instances come from real QoS data: QWS 2.0 or WS-DREAM (see qos/datasets.py).
+
 Usage:
-  python experiments/run_experiments.py                 # everything, 30 runs
-  python experiments/run_experiments.py --runs 5 --only E1_tightness
-Output: results/raw/<experiment>.csv and results/raw/E6_convergence.npz
+  python experiments/run_experiments.py --dataset qws           # 30 runs
+  python experiments/run_experiments.py --dataset wsdream --runs 5 --only E1_relative
+Output: results/<dataset>/raw/<experiment>.csv and E6_convergence.npz
 """
 from __future__ import annotations
 
@@ -41,7 +43,7 @@ import pandas as pd  # noqa: E402
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from qos import generate_instance  # noqa: E402
+from qos.datasets import make_instance  # noqa: E402
 from qos.composers import (critical_tightness, genetic_algorithm, greedy_local,  # noqa: E402
                            greedy_repair, random_search, solve_milp)
 
@@ -73,18 +75,26 @@ ATTRIBUTE_MODES = {
     "latency only": lambda t: (t, 0.0, 0.0),
     "cost only": lambda t: (0.0, t, 0.0),
     "reliability only": lambda t: (0.0, 0.0, t),
+    "latency + cost": lambda t: (t, t, 0.0),
+    "latency + reliability": lambda t: (t, 0.0, t),
+    "cost + reliability": lambda t: (0.0, t, t),
     "all three": lambda t: (t, t, t),
 }
+# E4 levels, relative to the instance's all-three critical tightness tau_star.
+# Above 1.0 the all-three problem is infeasible by definition, so the levels
+# show which single constraints and pairs stay solvable there.
+ATTRIBUTE_LEVELS = (0.9, 1.0, 1.2)
 
 
-def build_tasks(runs: int) -> list[dict]:
+def build_tasks(runs: int, dataset: str) -> list[dict]:
     """One task = one generated instance plus the algorithms to run on it."""
     tasks = []
 
     def add(experiment, seed, n, m, label, level, algorithms, tightness=None, rho=None, **extra):
         # Exactly one of: absolute ``tightness`` or relative ``rho``.
-        tasks.append(dict(experiment=experiment, seed=seed, n=n, m=m, tightness=tightness,
-                          rho=rho, label=label, level=level, algorithms=algorithms, **extra))
+        tasks.append(dict(experiment=experiment, dataset=dataset, seed=seed, n=n, m=m,
+                          tightness=tightness, rho=rho, label=label, level=level,
+                          algorithms=algorithms, **extra))
 
     for k in range(runs):
         # E1: the same 30 instances at every tightness (paired design).
@@ -96,10 +106,10 @@ def build_tasks(runs: int) -> list[dict]:
             add("E2_tasks", 1000 + k, n, 20, n, SCALE_RHO, MAIN_ALGORITHMS, rho=SCALE_RHO)
         for m in (10, 20, 50, 100):
             add("E3_candidates", 2000 + k, 10, m, m, SCALE_RHO, MAIN_ALGORITHMS, rho=SCALE_RHO)
-        for level in (0.5, 0.65, 0.8):
-            for mode, make in ATTRIBUTE_MODES.items():
+        for level in ATTRIBUTE_LEVELS:
+            for mode in ATTRIBUTE_MODES:
                 add("E4_attribute", 3000 + k, 10, 20, mode, level,
-                    ["Greedy-Local", "Greedy-Repair", "GA", "GA+Greedy"], tightness=make(level))
+                    ["Greedy-Local", "Greedy-Repair", "GA", "GA+Greedy"], mode=mode)
         for rho in (0.9, 0.95, 1.0):
             add("E5_handling", 4000 + k, 10, 20, rho, rho, HANDLING_VARIANTS, rho=rho)
         add("E6_convergence", 5000 + k, 20, 30, SCALE_RHO, SCALE_RHO, ["Greedy-Repair"],
@@ -119,16 +129,20 @@ def _row(task: dict, problem, tightness, tau_star, algorithm: str, result) -> di
         "max_cost": problem.constraints.max_cost,
         "min_reliability": problem.constraints.min_reliability,
         **result.summary(), "algorithm": algorithm,
+        "upper_bound": result.history.get("upper_bound", np.nan),
     }
 
 
 def run_task(task: dict):
     """Solve one instance with the MILP and every requested algorithm."""
-    base = generate_instance(task["n"], task["m"], tightness=0.0, seed=task["seed"])
+    base = make_instance(task["dataset"], task["n"], task["m"], seed=task["seed"])
     tau_star = np.nan
     if task["rho"] is not None:
         tau_star = critical_tightness(base, time_limit=MILP_TIME_LIMIT)
         tightness = task["rho"] * tau_star
+    elif task.get("mode") is not None:
+        tau_star = critical_tightness(base, time_limit=MILP_TIME_LIMIT)
+        tightness = ATTRIBUTE_MODES[task["mode"]](min(1.0, task["level"] * tau_star))
     else:
         tightness = task["tightness"]
     problem = base.with_tightness(tightness)
@@ -161,13 +175,14 @@ def main() -> None:
     parser.add_argument("--runs", type=int, default=30, help="instances per setting")
     parser.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     parser.add_argument("--only", nargs="+", help="experiment names to run")
-    parser.add_argument("--out", default=str(ROOT / "results" / "raw"))
+    parser.add_argument("--dataset", choices=("qws", "wsdream"), default="qws")
+    parser.add_argument("--out", help="output folder (default results/<dataset>/raw)")
     args = parser.parse_args()
 
-    tasks = build_tasks(args.runs)
+    tasks = build_tasks(args.runs, args.dataset)
     if args.only:
         tasks = [t for t in tasks if t["experiment"] in args.only]
-    out = pathlib.Path(args.out)
+    out = pathlib.Path(args.out or ROOT / "results" / args.dataset / "raw")
     out.mkdir(parents=True, exist_ok=True)
     print(f"{len(tasks)} instances, {args.jobs} worker processes")
 

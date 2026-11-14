@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from qos import Constraints, ProblemInstance, constraints_from_tightness, generate_instance
+from qos import Constraints, ProblemInstance, constraints_from_tightness
+from helpers import instance
 
 
 def tiny_problem(constraints=None, tightness=None):
@@ -22,7 +23,7 @@ def test_aggregation_matches_hand_computation():
 
 
 def test_batch_and_single_evaluation_agree():
-    p = generate_instance(6, 5, tightness=0.5, seed=1)
+    p = instance(6, 5, tightness=0.5, seed=1)
     batch = np.random.default_rng(0).integers(0, 5, size=(20, 6))
     ev = p.evaluate(batch)
     for k, a in enumerate(batch):
@@ -39,7 +40,7 @@ def test_bounds():
 
 
 def test_utility_equals_saw_formula_and_stays_in_unit_interval():
-    p = generate_instance(5, 4, tightness=0.0, seed=3)
+    p = instance(5, 4, tightness=0.0, seed=3)
     b, w = p.bounds, p.weights
     batch = np.random.default_rng(1).integers(0, 4, size=(200, 5))
     ev = p.evaluate(batch)
@@ -64,13 +65,13 @@ def test_violation_zero_iff_constraints_hold():
 
 
 def test_tightness_zero_makes_everything_feasible():
-    p = generate_instance(6, 5, tightness=0.0, seed=2)
+    p = instance(6, 5, tightness=0.0, seed=2)
     batch = np.random.default_rng(2).integers(0, 5, size=(500, 6))
     assert p.evaluate(batch).feasible.all()
 
 
 def test_tightness_is_monotone():
-    p = generate_instance(8, 10, tightness=0.0, seed=4)
+    p = instance(8, 10, tightness=0.0, seed=4)
     previous = None
     for t in np.linspace(0, 1, 11):
         c = constraints_from_tightness(p.bounds, t)
@@ -82,7 +83,7 @@ def test_tightness_is_monotone():
 
 
 def test_tightness_one_bounds_equal_best_aggregates():
-    p = generate_instance(5, 6, tightness=1.0, seed=5)
+    p = instance(5, 6, tightness=1.0, seed=5)
     c, b = p.constraints, p.bounds
     assert c.max_latency == pytest.approx(b.latency_best)
     assert c.max_cost == pytest.approx(b.cost_best)
@@ -90,7 +91,7 @@ def test_tightness_one_bounds_equal_best_aggregates():
 
 
 def test_per_attribute_tightness():
-    p = generate_instance(5, 6, tightness=(0.0, 1.0, 0.0), seed=6)
+    p = instance(5, 6, tightness=(0.0, 1.0, 0.0), seed=6)
     assert p.constraints.max_latency == pytest.approx(p.bounds.latency_worst)
     assert p.constraints.max_cost == pytest.approx(p.bounds.cost_best)
 
@@ -110,10 +111,3 @@ def test_invalid_assignment_rejected():
         tiny_problem().evaluate([0, 2])
     with pytest.raises(ValueError):
         constraints_from_tightness(tiny_problem().bounds, 1.5)
-
-
-def test_generator_is_reproducible():
-    a = generate_instance(4, 3, seed=11)
-    b = generate_instance(4, 3, seed=11)
-    np.testing.assert_array_equal(a.latency, b.latency)
-    np.testing.assert_array_equal(a.reliability, b.reliability)

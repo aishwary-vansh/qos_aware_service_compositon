@@ -115,21 +115,37 @@ MMKP is NP-hard. So is our problem, because with a single cost constraint it red
 to the multiple-choice knapsack problem. Exact methods do not scale, which motivates
 the greedy and GA heuristics.
 
-## 3. Synthetic QoS data (`qos/generator.py`)
+## 3. Real QoS data (`qos/datasets.py`)
 
-There are no real per-task candidate sets to use, so we generate them. Value ranges
-are loosely based on the QWS dataset (Al-Masri & Mahmoud).
+All candidate services come from two real QoS datasets. `scripts/download_data.py`
+fetches them from Zenodo and checks their md5 sums. The raw files are not committed,
+because the QWS licence does not allow redistribution.
 
-- Each candidate has a hidden *tier* `q ~ U(0, 1)`.
-- Latency quality and reliability quality each mix `q` with independent noise:
-  `ρ·q + (1 − ρ)·U(0, 1)`, with correlation `ρ = 0.6`.
-- `latency = s_i · (40 + 960·(1 − q_lat)) · LogNormal(0, 0.1)` ms, with task scale `s_i ~ U(0.5, 1.5)`.
-- `cost = s'_i · (0.2 + 9.8·q^1.5) · LogNormal(0, 0.1)`. Better-tier services cost more.
-- `reliability = 0.95 + 0.0499·q_rel ∈ [0.95, 0.9999]`.
+| | QWS 2.0 (2,507 services) | WS-DREAM dataset 1 (339 users × 5,825 services) |
+|---|---|---|
+| Latency | Response Time (ms), measured | Response time seen by one user (ms), measured |
+| Reliability | Reliability (%) / 100, measured | Share of users whose call returned a valid value (the dataset marks the rest `-1`) |
+| Cost | AWS EC2 t3 hourly price, by throughput tier | Same |
+| Cleaning | No rows dropped | Services valid for under 50 % of users dropped (248) |
 
-The result is a real three-way trade-off: fast, reliable services are expensive.
-Cheap services are slow, unreliable, or both. A seed makes every instance
-reproducible.
+**Cost.** Neither dataset records a price. Each service is ranked by its measured
+throughput, which indicates provisioned capacity. The ranking is split into six equal
+groups, mapped to the AWS EC2 t3 sizes nano, micro, small, medium, large and xlarge
+(on-demand, Linux, us-east-1: $0.0052, $0.0104, $0.0208, $0.0416, $0.0832 and $0.1664
+per hour). A composite's cost is therefore its hourly hosting cost. This gives a real
+trade-off: higher-priced services have lower latency (Spearman ρ = −0.35 on QWS,
+−0.54 on WS-DREAM).
+
+**Instances** (`make_instance`):
+- N × M distinct services are drawn without replacement and split at random into N
+  tasks. Neither dataset labels service functions, so the split is random.
+- On WS-DREAM, an instance is built for one random user, using only the services that
+  user observed successfully and that user's measured latency.
+- Every instance is reproducible from its seed.
+- **Very large instances** (`needs_reuse`): when N × M exceeds the services available,
+  each task draws its own M distinct services. A service can then appear in several
+  tasks, but never twice in one task. This happens only above about 2,500 services on
+  QWS and 5,500 on WS-DREAM.
 
 ## 4. Composition algorithms (`qos/composers/`)
 
@@ -224,6 +240,24 @@ generation) feeds the convergence plots.
   The model is exact because everything is linear (§2.2, §2.4). It gives the true
   optimum, which defines the **optimality gap**. It also proves infeasibility, so
   success rate is measured against instances that actually have a feasible solution.
+
+  Implementation details:
+  - The one-per-task rows use a sparse matrix, so instances with tens of thousands of
+    variables fit in memory.
+  - The result records HiGHS's proven upper bound on utility (`upper_bound`) and its
+    node count. If the time limit is hit, the bound shows how far from optimal the
+    returned composition can be at most.
+  - `feasibility_only=True` drops the objective, so the solver stops at the first
+    feasible composition. The τ\* bisection uses this, and it is much faster.
+  - HiGHS stops within its default 0.01 % relative gap. So "optimal" means within
+    0.01 % of the true optimum, and on rare instances a heuristic finds a marginally
+    better composition.
+
+  **Why the MILP is fast here.** Besides the N one-per-task rows, only K = 3 QoS rows
+  link the tasks. A basic optimal solution of the LP relaxation has at most N + 3
+  nonzero variables, and every task needs at least one. So at most 3 tasks are split
+  between candidates, and the rest are already integral. The solver therefore needs
+  very little branching, even on whole datasets.
 - **Brute force.** Full enumeration for M^N ≤ 2·10^6. It is used only to check the
   MILP in the unit tests.
 - **Random search.** The best of 30,000 uniform samples under Deb's rules. That
@@ -241,9 +275,10 @@ generation) feeds the convergence plots.
 | Evaluations              | Number of compositions whose QoS was computed                       |
 | Convergence              | GA best utility per generation                                      |
 
-**Relative tightness.** Absolute τ turned out to be a poor experimental axis. For
-N=10 and M=20, every instance is solvable up to τ ≈ 0.66, and almost none are above
-τ ≈ 0.70, so the hard region is a narrow band.
+**Relative tightness.** Absolute τ is a poor experimental axis, because the feasibility
+limit differs between instances and datasets. For N=10 and M=20, the limit averages
+τ ≈ 0.90 on QWS and τ ≈ 0.96 on WS-DREAM. Below it the constraints barely bind; above
+it nothing is solvable.
 
 Each instance's **critical tightness τ\*** is the largest τ that still has a feasible
 composition. Feasible sets are nested in τ, so the MILP finds τ\* by bisection
@@ -255,15 +290,20 @@ Sweeps (`experiments/run_experiments.py`; results in `results/ANALYSIS.md`):
 2. **E1_relative:** ρ from 0.5 to 1.0.
 3. **E2_tasks:** N ∈ {5, 10, 20, 40} at ρ = 0.95.
 4. **E3_candidates:** M ∈ {10, 20, 50, 100} at ρ = 0.95.
-5. **E4_attribute:** one constraint tightened at a time, against all three together.
+5. **E4_attribute:** each single constraint, each pair, and all three together, at
+   0.9, 1.0 and 1.2 × the all-three limit τ\*.
 6. **E5_handling:** GA with Deb's rules against static penalties λ ∈ {1, 10, 100}.
 7. **E6_convergence:** GA and GA+Greedy curves at N=20, M=30.
+8. **E7_full** (`experiments/run_full_dataset.py`): whole-dataset instances, using
+   2,500 QWS services as 10 × 250 or 50 × 50, and 5,500 WS-DREAM services (one user) as
+   10 × 550 or 50 × 110, at ρ ∈ {0.90, 0.95, 0.98, 1.0}.
 
-Each setting runs 30 random instances with fixed seeds.
+Each setting runs 30 instances with fixed seeds, on each dataset
+(`--dataset qws` or `--dataset wsdream`).
 
 ## 6. Validation (`tests/`)
 
-60 unit tests check:
+67 unit tests run on real QWS instances, plus a hand-computed 2×2 example. They check:
 - aggregation against hand computation;
 - the SAW utility against its closed form, staying within [0, 1];
 - the violation definition, and the τ edge cases (τ = 0 makes everything feasible;
@@ -274,7 +314,10 @@ Each setting runs 30 random instances with fixed seeds.
 - the hybrid GA never doing worse than its greedy seed;
 - the GA staying within 5 % of the optimum on medium instances;
 - every composer reporting infeasible on an impossible instance;
-- that critical tightness is the exact feasibility threshold, checked against brute force.
+- that critical tightness is the exact feasibility threshold, checked against brute force;
+- the dataset loaders: valid value ranges, price tiers, reproducible instances with
+  distinct services, and services never repeated within one task in very large
+  instances.
 
 ## 7. Assumptions and limits
 
@@ -283,5 +326,9 @@ Each setting runs 30 random instances with fixed seeds.
   handles any aggregation unchanged. The MILP and the greedy swap table rely on
   additive aggregation.
 - QoS values are static, known in advance and deterministic.
-- The data is synthetic (§3). Real QWS records could replace `generate_qos` without
-  changes elsewhere.
+- Cost is derived from a public price list by throughput tier, not measured per service.
+- WS-DREAM reliability is an observed success ratio, used as a proxy.
+- Services are grouped into tasks at random, because the datasets do not label their
+  functions.
+- Only three QoS constraints are modelled. With more constraints, the LP relaxation can
+  leave more tasks fractional, and the MILP may slow down. This has not been tested.

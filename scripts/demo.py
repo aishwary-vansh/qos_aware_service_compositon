@@ -1,6 +1,6 @@
-"""Run every composer on one generated instance at a few tightness levels.
+"""Run every composer on one real-data instance at a few tightness levels.
 
-Usage: python scripts/demo.py [--tasks 10] [--candidates 20] [--seed 7]
+Usage: python scripts/demo.py [--dataset qws] [--tasks 10] [--candidates 20] [--seed 7]
 """
 from __future__ import annotations
 
@@ -10,20 +10,21 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from qos import generate_instance  # noqa: E402
+from qos.datasets import make_instance  # noqa: E402
 from qos.composers import ALGORITHMS  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--dataset", choices=("qws", "wsdream"), default="qws")
     parser.add_argument("--tasks", type=int, default=10)
     parser.add_argument("--candidates", type=int, default=20)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--tightness", type=float, nargs="+", default=[0.2, 0.4, 0.6, 0.8])
     args = parser.parse_args()
 
-    base = generate_instance(args.tasks, args.candidates, tightness=0.0, seed=args.seed)
-    print(f"Instance: {args.tasks} tasks x {args.candidates} candidates "
+    base = make_instance(args.dataset, args.tasks, args.candidates, seed=args.seed)
+    print(f"Instance: {args.dataset}, {args.tasks} tasks x {args.candidates} candidates "
           f"(search space {base.search_space_size:.2e})")
     for tightness in args.tightness:
         problem = base.with_tightness(tightness)
