@@ -50,16 +50,18 @@ that the whole chain meets three limits at once:
      measure every heuristic.
 5. **Controlled the tightness.** Each instance's feasibility limit τ\* is found exactly.
    Experiments sweep the relative tightness ρ = τ/τ\* up to 1, the edge of feasibility.
-6. **Ran six experiments on each dataset** (E1–E6, 30 instances per setting, 1,590
+6. **Ran ten experiments on each dataset** (E1–E9, 30 instances per setting, 2,250
    instances per dataset): tightness, scalability in tasks and candidates, single
-   constraints against pairs against all three, GA constraint handling, and GA
-   convergence. Paired Wilcoxon tests check the main differences.
+   constraints against pairs against all three (with each subset's own critical
+   tightness bisected by the exact solver), GA constraint handling, GA convergence,
+   a 150-instance sweep at ρ ∈ {0.98, 0.99, 1.0}, and skewed utility weights. Paired
+   Wilcoxon tests check the main differences.
 7. **Ran a whole-dataset experiment** (E7, 240 instances per dataset). Each instance uses
    almost the entire dataset as candidates: 2,500 QWS services, or 5,500 WS-DREAM
    services for one user.
-8. **Validated the code** with 67 unit tests.
-9. **Wrote the IEEE report** (`report/`). It is 6 pages, follows Topic 27 point by point,
-   covers E1–E6 on both datasets, and has 15 references checked against their sources.
+8. **Validated the code** with 73 unit tests.
+9. **Wrote the IEEE report** (`report/`). It is 7 pages, follows Topic 27 point by point,
+   covers E1–E9 on both datasets, and has 15 references checked against their sources.
 
 ## Key results
 
@@ -73,13 +75,14 @@ Success rate, N = 10 tasks and M = 20 candidates, 30 instances per value:
 | GA+Greedy | 100 % | 90 % | 100 % | 80 % | about 30 ms |
 | Random | 0 % | 0 % | 3 % | 0 % | about 15 ms |
 
-- **Combining constraints is what makes it hard.** On both datasets, each single
-  constraint stays solvable beyond the point where every pair of constraints is already
-  infeasible.
+- **Combining constraints is what makes it hard.** No single constraint binds (its
+  critical tightness is 1 by construction), and the all-three limit (0.904 on QWS,
+  0.962 on WS-DREAM) lies below every pair's limit.
 - **Greedy-Repair is fastest.** It is optimal or within 0.023 % of the optimum up to
   ρ = 0.98, but it is the weakest of the three at the exact feasibility limit.
-- **The GA and the hybrid are more robust at the limit.** The hybrid is never worse than
-  Greedy-Repair (p = 0.0078 on QWS at ρ = 1).
+- **The GA and the hybrid are more robust at the limit.** Over the 150 paired instances
+  at ρ = 1, GA+Greedy beats Greedy-Repair on both datasets (p < 10⁻⁴); the plain GA's
+  smaller lead is not significant (p = 0.14 and 0.15).
 - **Naive methods fail.** Greedy-Local and Random break down as constraints tighten.
 
 **Whole datasets (E7).** 10 or 50 tasks over almost all services, up to about 10^102
@@ -87,7 +90,7 @@ possible compositions:
 
 | | QWS 2.0 (2,500 services) | WS-DREAM (5,500 services) |
 |---|---|---|
-| Exact MILP | Optimal in all 240 instances, at most 0.33 s | Optimal in all 240, at most 0.23 s |
+| Exact MILP | Optimal in all 240 instances, slowest solve 0.33 s | Optimal in all 240, slowest solve 0.23 s |
 | Greedy-Repair at ρ ≤ 0.98 | 100 % success, gap ≤ 0.004 %, 0.3–1.3 ms | 100 % success, gap 0 %, 0.3–0.5 ms |
 | Greedy-Repair at ρ = 1 | 63–67 % | 90 % |
 | GA at ρ = 1 | 0–13 % | 0–23 % |
@@ -113,7 +116,7 @@ qos/
     random_search.py    Random-search baseline
     base.py             CompositionResult, Deb's ranking rule
 experiments/
-  run_experiments.py    runs E1-E6 on one dataset
+  run_experiments.py    runs E1-E9 on one dataset (E7 lives in run_full_dataset.py)
   run_full_dataset.py   runs E7 (whole-dataset instances) on one dataset
   make_figures.py       builds tables and figures for one dataset
   make_report_figures.py  builds the report's figures and tables from both datasets
@@ -244,7 +247,7 @@ runs.
 |---|---|
 | Source code and experiment scripts | Done |
 | Results, graphs and tables (both datasets) | Done |
-| Technical report | Done: `report/report.pdf`, 6 pages, IEEE format, covers E1–E6. Still needs the GitHub link in Code Availability; E7 is not yet in the report |
+| Technical report | Done: `report/report.pdf`, IEEE format, covers E1-E9. Still needs the GitHub link in Code Availability; E7 is not yet in the report |
 | Presentation slides | Not started |
 | Individual viva | Scheduled by the instructor |
 | Peer evaluation form | If requested by the instructor |

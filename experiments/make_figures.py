@@ -382,9 +382,11 @@ def fig_convergence(npz_path: pathlib.Path, figs: pathlib.Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def significance(df: pd.DataFrame, taus) -> pd.DataFrame:
-    """Paired Wilcoxon signed-rank tests on normalised quality (E1)."""
-    pairs = [("GA", "Greedy-Repair"), ("GA+Greedy", "Greedy-Repair"), ("GA+Greedy", "GA")]
+def significance(df: pd.DataFrame, taus, pairs=None) -> pd.DataFrame:
+    """Paired Wilcoxon signed-rank tests on normalised quality (E1, E8)."""
+    if pairs is None:
+        pairs = [("GA", "Greedy-Repair"), ("GA+Greedy", "Greedy-Repair"), ("GA+Greedy", "GA"),
+                 ("GA (penalty λ=1)", "GA")]
     rows = []
     for tau in taus:
         d = df[(df["label"] == tau) & df["opt_feasible"]]
@@ -449,6 +451,29 @@ def main() -> None:
     write_table(s4, tables, "E4_attribute_summary")
     fig_attribute(s4, e4, figs)
 
+    # Per-subset critical tightness: bisection with the MILP on each mode's
+    # own mask. A single attribute always ends at 1.0 by construction.
+    e4c = pd.read_csv(raw / "E4_critical.csv")
+    e4c["at_one"] = (e4c["tau_critical"] >= 1.0 - 1e-9).astype(int)
+    s4c = e4c.groupby("label", sort=False).agg(
+        instances=("tau_critical", "size"), tau_mean=("tau_critical", "mean"),
+        tau_min=("tau_critical", "min"), tau_max=("tau_critical", "max"),
+        share_at_one=("at_one", "mean")).reset_index()
+    write_table(s4c, tables, "E4_critical_summary")
+
+    e8 = load("E8_limit")
+    s8 = summarise(e8, ["label"])
+    write_table(s8, tables, "E8_limit_summary")
+    # Paired tests at the feasibility edge (rho = 1), as quoted in the paper.
+    sig8 = significance(e8, [1.0], pairs=[("GA (penalty λ=1)", "GA"), ("GA", "Greedy-Repair"),
+                                          ("GA+Greedy", "Greedy-Repair")])
+    write_table(sig8, tables, "E8_wilcoxon")
+    print("  table  E8_wilcoxon.csv/.md")
+
+    e9 = load("E9_weights")
+    s9 = summarise(e9, ["level", "label", "w_latency", "w_cost", "w_reliability"])
+    write_table(s9, tables, "E9_weights_summary")
+
     e5 = load("E5_handling")
     s5 = summarise(e5, ["label"])
     write_table(s5, tables, "E5_handling_summary")
@@ -461,7 +486,7 @@ def main() -> None:
                  "population_feasible_ratio": ".3f"})
     print("  table  E6_convergence_summary.csv/.md")
 
-    bad = sum(int(s["false_feasible"].sum()) for s in (s1, s1r, s2, s3, s4, s5))
+    bad = sum(int(s["false_feasible"].sum()) for s in (s1, s1r, s2, s3, s4, s5, s8, s9))
     print(f"sanity: {bad} runs claimed feasibility on an unsolvable instance (must be 0)")
 
 

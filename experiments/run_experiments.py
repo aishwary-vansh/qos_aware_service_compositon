@@ -6,8 +6,11 @@ Experiments (each over --runs random instances, fixed seeds):
   E2_tasks       scalability in the number of tasks N
   E3_candidates  scalability in the number of candidates per task M
   E4_attribute   single constraints and pairs vs all three together
+  E4_critical    per-subset critical tightness tau*_S (MILP bisection only)
   E5_handling    GA constraint handling: Deb's rules vs static penalty
   E6_convergence GA and GA+Greedy convergence (full 300 generations)
+  E8_limit       150+ instances at rho in {0.98, 0.99, 1.0} (--limit-runs)
+  E9_weights     skewed utility weights on the E1 instances
 
 Every instance is also solved exactly with the MILP, which gives the optimum
 and tells whether the instance has any feasible composition.
@@ -52,6 +55,9 @@ TIGHTNESS_GRID = [0.0, 0.2, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9
 RELATIVE_GRID = [0.5, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 1.0]
 SCALE_RHO = 0.95         # near the feasibility edge, still solvable
 MAIN_ALGORITHMS = ["Greedy-Local", "Greedy-Repair", "GA", "GA+Greedy", "Random"]
+# E1 additionally runs the penalty variant, so Deb's rules (plain "GA") and
+# lambda=1 can be compared on the same paired instances in the Wilcoxon test.
+E1_ALGORITHMS = MAIN_ALGORITHMS + ["GA (penalty λ=1)"]
 HANDLING_VARIANTS = ["GA (Deb)", "GA (penalty λ=1)", "GA (penalty λ=10)",
                      "GA (penalty λ=100)", "GA+Greedy"]
 
@@ -81,12 +87,15 @@ ATTRIBUTE_MODES = {
     "all three": lambda t: (t, t, t),
 }
 # E4 levels, relative to the instance's all-three critical tightness tau_star.
-# Above 1.0 the all-three problem is infeasible by definition, so the levels
-# show which single constraints and pairs stay solvable there.
+# Every level is multiplied by tau_star and clamped to [0, 1] (the valid range
+# of tightness). Since tau* is ~0.9, level 1.2 always clamps to tau = 1.0, the
+# attribute's own best aggregate, so a SINGLE constraint is feasible there by
+# construction: that row cannot show that a single constraint is hard. The
+# measured hardness of each subset comes from the E4_critical bisection.
 ATTRIBUTE_LEVELS = (0.9, 1.0, 1.2)
 
 
-def build_tasks(runs: int, dataset: str) -> list[dict]:
+def build_tasks(runs: int, dataset: str, limit_runs: int = 150) -> list[dict]:
     """One task = one generated instance plus the algorithms to run on it."""
     tasks = []
 
@@ -99,21 +108,37 @@ def build_tasks(runs: int, dataset: str) -> list[dict]:
     for k in range(runs):
         # E1: the same 30 instances at every tightness (paired design).
         for t in TIGHTNESS_GRID:
-            add("E1_tightness", k, 10, 20, t, t, MAIN_ALGORITHMS, tightness=t)
+            add("E1_tightness", k, 10, 20, t, t, E1_ALGORITHMS, tightness=t)
         for rho in RELATIVE_GRID:
-            add("E1_relative", k, 10, 20, rho, rho, MAIN_ALGORITHMS, rho=rho)
+            add("E1_relative", k, 10, 20, rho, rho, E1_ALGORITHMS, rho=rho)
         for n in (5, 10, 20, 40):
             add("E2_tasks", 1000 + k, n, 20, n, SCALE_RHO, MAIN_ALGORITHMS, rho=SCALE_RHO)
         for m in (10, 20, 50, 100):
             add("E3_candidates", 2000 + k, 10, m, m, SCALE_RHO, MAIN_ALGORITHMS, rho=SCALE_RHO)
+        # E4/E5 share the E1 instances (seed k), so every section measures the
+        # same problems and their tau_star values agree.
         for level in ATTRIBUTE_LEVELS:
             for mode in ATTRIBUTE_MODES:
-                add("E4_attribute", 3000 + k, 10, 20, mode, level,
+                add("E4_attribute", k, 10, 20, mode, level,
                     ["Greedy-Local", "Greedy-Repair", "GA", "GA+Greedy"], mode=mode)
+        # Per-subset critical tightness: bisect each mode's own limit with the
+        # MILP (no heuristics needed). One task per seed covers all 7 modes.
+        add("E4_critical", k, 10, 20, "critical", None, [], critical_modes=list(ATTRIBUTE_MODES))
         for rho in (0.9, 0.95, 1.0):
-            add("E5_handling", 4000 + k, 10, 20, rho, rho, HANDLING_VARIANTS, rho=rho)
+            add("E5_handling", k, 10, 20, rho, rho, HANDLING_VARIANTS, rho=rho)
         add("E6_convergence", 5000 + k, 20, 30, SCALE_RHO, SCALE_RHO, ["Greedy-Repair"],
             rho=SCALE_RHO, convergence=True)
+    # E8: many more instances near the feasibility edge, where 30 runs give
+    # success rates with ~10pp confidence intervals. Seeds < runs overlap E1.
+    for k in range(limit_runs):
+        for rho in (0.98, 0.99, 1.0):
+            add("E8_limit", k, 10, 20, rho, rho, E1_ALGORITHMS, rho=rho)
+    # E9: non-equal utility weights on the same instances as E1.
+    for w in ((0.6, 0.2, 0.2), (0.2, 0.6, 0.2), (0.2, 0.2, 0.6)):
+        for rho in (0.95, 1.0):
+            for k in range(runs):
+                add("E9_weights", k, 10, 20, f"w={w[0]:g}/{w[1]:g}/{w[2]:g}", rho,
+                    MAIN_ALGORITHMS, rho=rho, weights=w)
     return tasks
 
 
@@ -130,12 +155,28 @@ def _row(task: dict, problem, tightness, tau_star, algorithm: str, result) -> di
         "min_reliability": problem.constraints.min_reliability,
         **result.summary(), "algorithm": algorithm,
         "upper_bound": result.history.get("upper_bound", np.nan),
+        "w_latency": problem.weights[0], "w_cost": problem.weights[1],
+        "w_reliability": problem.weights[2],
     }
 
 
 def run_task(task: dict):
     """Solve one instance with the MILP and every requested algorithm."""
-    base = make_instance(task["dataset"], task["n"], task["m"], seed=task["seed"])
+    weights = task.get("weights")
+    base = make_instance(task["dataset"], task["n"], task["m"], seed=task["seed"],
+                         weights=weights) if weights is not None else \
+        make_instance(task["dataset"], task["n"], task["m"], seed=task["seed"])
+    if task.get("critical_modes"):
+        # E4_critical: one row per constraint subset, no heuristics. The mask
+        # for a mode is its tightness vector at tau = 1.
+        rows = []
+        for mode in task["critical_modes"]:
+            tau = critical_tightness(base, mask=ATTRIBUTE_MODES[mode](1.0),
+                                     time_limit=MILP_TIME_LIMIT)
+            rows.append(dict(experiment=task["experiment"], seed=task["seed"],
+                             n_tasks=task["n"], n_candidates=task["m"], label=mode,
+                             tau_critical=tau))
+        return rows, None
     tau_star = np.nan
     if task["rho"] is not None:
         tau_star = critical_tightness(base, time_limit=MILP_TIME_LIMIT)
@@ -173,13 +214,15 @@ def run_task(task: dict):
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run Phase 3 experiments.")
     parser.add_argument("--runs", type=int, default=30, help="instances per setting")
+    parser.add_argument("--limit-runs", type=int, default=150,
+                        help="instances for the near-limit E8 sweep")
     parser.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     parser.add_argument("--only", nargs="+", help="experiment names to run")
     parser.add_argument("--dataset", choices=("qws", "wsdream"), default="qws")
     parser.add_argument("--out", help="output folder (default results/<dataset>/raw)")
     args = parser.parse_args()
 
-    tasks = build_tasks(args.runs, args.dataset)
+    tasks = build_tasks(args.runs, args.dataset, args.limit_runs)
     if args.only:
         tasks = [t for t in tasks if t["experiment"] in args.only]
     out = pathlib.Path(args.out or ROOT / "results" / args.dataset / "raw")

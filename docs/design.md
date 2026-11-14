@@ -291,9 +291,14 @@ Sweeps (`experiments/run_experiments.py`; results in `results/ANALYSIS.md`):
 3. **E2_tasks:** N ∈ {5, 10, 20, 40} at ρ = 0.95.
 4. **E3_candidates:** M ∈ {10, 20, 50, 100} at ρ = 0.95.
 5. **E4_attribute:** each single constraint, each pair, and all three together, at
-   0.9, 1.0 and 1.2 × the all-three limit τ\*.
+   0.9 and 1.0 × the all-three limit τ\* (a 1.2 level would exceed the valid range
+   [0,1] and clamps to τ = 1, where a single constraint is feasible by construction).
+5b. **E4_critical:** bisects each subset's own critical tightness τ\*_S with the
+   exact solver (`critical_tightness` accepts a mask); singles always reach 1.0.
 6. **E5_handling:** GA with Deb's rules against static penalties λ ∈ {1, 10, 100}.
 7. **E6_convergence:** GA and GA+Greedy curves at N=20, M=30.
+7b. **E8_limit:** 150 instances at ρ ∈ {0.98, 0.99, 1.0} (`--limit-runs`).
+7c. **E9_weights:** skewed utility weights (one attribute at 0.6) at ρ ∈ {0.95, 1.0}.
 8. **E7_full** (`experiments/run_full_dataset.py`): whole-dataset instances, using
    2,500 QWS services as 10 × 250 or 50 × 50, and 5,500 WS-DREAM services (one user) as
    10 × 550 or 50 × 110, at ρ ∈ {0.90, 0.95, 0.98, 1.0}.
@@ -303,7 +308,7 @@ Each setting runs 30 instances with fixed seeds, on each dataset
 
 ## 6. Validation (`tests/`)
 
-67 unit tests run on real QWS instances, plus a hand-computed 2×2 example. They check:
+73 unit tests run on real QWS instances, plus a hand-computed 2×2 example. They check:
 - aggregation against hand computation;
 - the SAW utility against its closed form, staying within [0, 1];
 - the violation definition, and the τ edge cases (τ = 0 makes everything feasible;

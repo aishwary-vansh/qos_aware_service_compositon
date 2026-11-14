@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from qos.datasets import (DATA_DIR, EC2_T3_HOURLY_USD, load, make_instance, needs_reuse,
-                          price_by_throughput)
+from qos.datasets import (DATA_DIR, EC2_T3_HOURLY_USD, load, load_qws, make_instance,
+                          needs_reuse, price_by_throughput)
 
 HAVE_QWS = (DATA_DIR / "qws" / "qws2.txt").exists()
 HAVE_WSDREAM = (DATA_DIR / "wsdream" / "dataset1" / "rtMatrix.txt").exists()
@@ -58,3 +58,19 @@ def test_large_instance_reuses_services_across_tasks_only():
 def test_unknown_dataset_rejected():
     with pytest.raises(ValueError):
         load("nope")
+
+
+def test_qws_latency_column_switch(tmp_path):
+    # Columns: 0 Response Time, 2 Throughput, 4 Reliability, 7 Latency.
+    line = "100,1,50,1,80,1,1,42,1\n"
+    file = tmp_path / "qws2.txt"
+    file.write_text(line * 3, encoding="latin-1")
+    rt = load_qws(path=file)
+    lat = load_qws(path=file, latency="latency")
+    assert np.allclose(rt.latency, 100.0)
+    assert np.allclose(lat.latency, 42.0)
+
+
+def test_unknown_latency_source_rejected():
+    with pytest.raises(ValueError):
+        load_qws(latency="nope")

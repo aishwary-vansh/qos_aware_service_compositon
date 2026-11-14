@@ -125,6 +125,21 @@ def test_critical_tightness_is_feasibility_threshold(seed):
         assert not brute_force(p.with_tightness(min(1.0, tau_star + 1e-3))).feasible
 
 
+@pytest.mark.parametrize("mask", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+def test_critical_tightness_single_attribute_is_one(mask):
+    # Each attribute alone is reachable at its own best aggregate.
+    p = instance(6, 8, tightness=0.0, seed=0)
+    assert critical_tightness(p, mask=mask) == 1.0
+
+
+def test_critical_tightness_masks_are_nested():
+    p = instance(8, 10, tightness=0.0, seed=1)
+    all_three = critical_tightness(p)
+    for mask in ((1, 1, 0), (1, 0, 1), (0, 1, 1)):
+        # Loosening one attribute can only raise the critical tightness.
+        assert critical_tightness(p, mask=mask) >= all_three - 1e-9
+
+
 def test_brute_force_refuses_huge_space():
     with pytest.raises(ValueError):
         brute_force(instance(20, 10, tightness=0.5, seed=0))

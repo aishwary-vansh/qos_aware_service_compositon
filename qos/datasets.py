@@ -39,6 +39,11 @@ from .model import ProblemInstance
 DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "data" / "raw"
 DATASETS = ("qws", "wsdream")
 
+# QWS column of each latency source. Column 0 is Response Time (the default);
+# column 7 is the separately measured Latency attribute, available for a
+# Response Time vs Latency check.
+QWS_LATENCY_COLUMNS = {"response_time": 0, "latency": 7}
+
 # AWS EC2 t3 on-demand prices, Linux, us-east-1, USD per hour:
 # nano, micro, small, medium, large, xlarge.
 EC2_T3_HOURLY_USD = np.array([0.0052, 0.0104, 0.0208, 0.0416, 0.0832, 0.1664])
@@ -76,8 +81,14 @@ def price_by_throughput(throughput: np.ndarray) -> np.ndarray:
 
 
 @functools.lru_cache(maxsize=None)
-def load_qws(path: pathlib.Path | None = None) -> ServicePool:
-    """Load QWS 2.0 and drop rows with impossible values."""
+def load_qws(path: pathlib.Path | None = None, latency: str = "response_time") -> ServicePool:
+    """Load QWS 2.0 and drop rows with impossible values.
+
+    ``latency`` picks the latency source: ``response_time`` (column 0, the
+    default) or the separate ``latency`` attribute (column 7).
+    """
+    if latency not in QWS_LATENCY_COLUMNS:
+        raise ValueError(f"unknown latency source {latency!r}; choose from {QWS_LATENCY_COLUMNS}")
     path = path or DATA_DIR / "qws" / "qws2.txt"
     rows = []
     with open(path, encoding="latin-1") as f:
@@ -85,12 +96,14 @@ def load_qws(path: pathlib.Path | None = None) -> ServicePool:
             if line[:1].isdigit():
                 rows.append([float(v) for v in line.split(",")[:9]])
     data = np.array(rows)
+    col = QWS_LATENCY_COLUMNS[latency]
     response_time, throughput, reliability = data[:, 0], data[:, 2], data[:, 4]
-    valid = ((response_time > 0) & (reliability > 0) & (reliability <= 100)
+    latency_values = data[:, col]
+    valid = ((latency_values > 0) & (reliability > 0) & (reliability <= 100)
              & (throughput >= 0))
     return ServicePool(
         name="QWS 2.0",
-        latency=response_time[valid],
+        latency=latency_values[valid],
         reliability=reliability[valid] / 100.0,
         cost=price_by_throughput(throughput[valid]),
         dropped=int((~valid).sum()),
@@ -121,9 +134,9 @@ def load_wsdream(directory: pathlib.Path | None = None) -> ServicePool:
     )
 
 
-def load(dataset: str) -> ServicePool:
+def load(dataset: str, latency: str = "response_time") -> ServicePool:
     if dataset == "qws":
-        return load_qws()
+        return load_qws(latency=latency)
     if dataset == "wsdream":
         return load_wsdream()
     raise ValueError(f"unknown dataset {dataset!r}; choose from {DATASETS}")

@@ -168,16 +168,110 @@ def table_gap_runtime() -> None:
     write_table("gap_runtime", "llcccc", header, rows)
 
 
-def table_combinations() -> None:
-    """Solvable instances (of 30) at 1.2 x the all-three limit."""
+def table_critical() -> None:
+    """Mean per-subset critical tightness tau*_S from the E4_critical bisection.
+
+    Replaces the old 1.2 tau* test: at that level the tightness vector is
+    clamped to tau = 1, where a single constraint is feasible by construction.
+    """
+    rows = []
+    means = {}
+    for k, label in DATASETS.items():
+        s = pd.read_csv(RESULTS / k / "tables" / "E4_critical_summary.csv").set_index("label")
+        means[k] = s["tau_mean"]
+        cells = [label] + [f"{s.loc[m, 'tau_mean']:.3f}" for m in MODES]
+        rows.append(" & ".join(cells) + r" \\")
+    header = "Dataset & " + " & ".join(MODE_TICKS) + r" \\"
+    write_table("critical", "l" + "c" * len(MODES), header, rows)
+    # The all-three column must reproduce the E1 instances' tau_star.
+    for k in DATASETS:
+        e1 = pd.read_csv(RESULTS / k / "raw" / "E1_relative.csv").drop_duplicates("seed")
+        diff = abs(means[k]["all three"] - e1["tau_star"].mean())
+        print(f"  mask check ({k}): all-three tau mean vs E1 tau_star mean differ by {diff:.1e}")
+
+
+def table_e7() -> None:
+    """Success rate of the core composers on whole-dataset instances (E7)."""
+    composers = ["Greedy-Repair", "GA", "GA+Greedy"]
     rows = []
     for k, label in DATASETS.items():
-        d = table(k, "E4_attribute")
-        d = d[(d["level"] == 1.2) & (d["algorithm"] == "Optimal-MILP")].set_index("label")
-        solv = d["solvable"].reindex(MODES).fillna(0).astype(int)
-        rows.append(f"{label} & " + " & ".join(str(v) for v in solv) + r" \\")
-    header = "Dataset & " + " & ".join(MODE_TICKS) + r" \\"
-    write_table("combinations", "l" + "c" * len(MODES), header, rows)
+        s = table(k, "E7_full").set_index(["label", "level", "algorithm"])
+        for size in sorted(s.index.get_level_values("label").unique()):
+            for name in composers:
+                cells = [label if name == composers[0] else "",
+                         str(size) if name == composers[0] else "",
+                         name.replace("Greedy-", "G-").replace("GA+Greedy", "G+G")]
+                for rho in (0.90, 0.95, 0.98, 1.0):
+                    r = s.loc[(size, rho, name)]
+                    cells.append(f"{r['success_rate']:.2f}")
+                rows.append(" & ".join(cells) + r" \\")
+        rows.append(r"\midrule")
+    rows.pop()   # no rule after the last dataset
+    header = (r"Data & Size & Composer & \multicolumn{4}{c}{Success rate} \\"
+              "\n" r"\cmidrule(lr){4-7}"
+              "\n" r" & & & $\rho=0.90$ & $0.95$ & $0.98$ & $1.00$ \\")
+    write_table("e7", "lllcccc", header, rows)
+
+
+def table_limit() -> None:
+    """Success rate at the feasibility edge, over the 150-instance E8 sweep."""
+    names = ["Greedy-Local", "Greedy-Repair", "GA", "GA (penalty λ=1)", "GA+Greedy"]
+    short = {"Greedy-Local": "GL", "Greedy-Repair": "GR", "GA": "GA",
+             "GA (penalty λ=1)": r"$\lambda=1$", "GA+Greedy": "G+G"}
+    rows = []
+    for k, label in DATASETS.items():
+        s = table(k, "E8_limit").set_index(["algorithm", "label"])
+        for name in names:
+            cells = [label if name == names[0] else "", short[name]]
+            for rho in (0.98, 0.99, 1.0):
+                cells.append(f"{s.loc[(name, rho), 'success_rate']:.2f}")
+            rows.append(" & ".join(cells) + r" \\")
+        rows.append(r"\midrule")
+    rows.pop()
+    header = (r"Data & Composer & \multicolumn{3}{c}{Success rate} \\"
+              "\n" r"\cmidrule(lr){3-5}"
+              "\n" r" & & $\rho=0.98$ & $0.99$ & $1.00$ \\")
+    write_table("limit", "lcccc", header, rows)
+
+
+def table_weights() -> None:
+    """E9: success at the limit under skewed utility weights (rho = 1.0)."""
+    tags = {"w=0.6/0.2/0.2": r"$w_L=.6$", "w=0.2/0.6/0.2": r"$w_C=.6$",
+            "w=0.2/0.2/0.6": r"$w_R=.6$"}
+    rows = []
+    for k, label in DATASETS.items():
+        p = table(k, "E9_weights")
+        p = p[(p["level"] == 1.0) & (p["algorithm"] != "Optimal-MILP")].pivot(
+            index="label", columns="algorithm", values="success_rate")
+        for tag, tex in tags.items():
+            cells = [label if tex == tags["w=0.6/0.2/0.2"] else "", tex]
+            cells += [f"{p.loc[tag, n]:.2f}" for n in ("Greedy-Repair", "GA", "GA+Greedy")]
+            rows.append(" & ".join(cells) + r" \\")
+        rows.append(r"\midrule")
+    rows.pop()
+    header = (r"Data & Weights & GR & GA & G+G \\"
+              "\n" r"\cmidrule(lr){3-5}")
+    write_table("weights", "llccc", header, rows)
+
+
+def seq_timing() -> None:
+    """Compare 10-worker runtimes with a --jobs 1 re-run of E1_relative."""
+    for k in DATASETS:
+        seq = RESULTS / k / "raw_seq" / "E1_relative.csv"
+        if not seq.exists():
+            print(f"  {k}: no raw_seq run, skipping sequential timing")
+            continue
+        par = pd.read_csv(RESULTS / k / "raw" / "E1_relative.csv")
+        seq = pd.read_csv(seq)
+        d = [0.95, 0.98, 1.0]
+        par = par[par["label"].isin(d)].groupby(["algorithm", "label"])["runtime_s"].mean() * 1e3
+        seq = seq[seq["label"].isin(d)].groupby(["algorithm", "label"])["runtime_s"].mean() * 1e3
+        out = pd.DataFrame({"runtime_parallel_ms": par, "runtime_sequential_ms": seq,
+                            "ratio": seq / par}).reset_index()
+        path = RESULTS / k / "tables" / "E1_relative_seq.csv"
+        out.to_csv(path, index=False)
+        print(f"  {k}: sequential timing in {path.name}, "
+              f"ratio {out['ratio'].min():.2f}--{out['ratio'].max():.2f}")
 
 
 def table_scale() -> None:
@@ -221,9 +315,13 @@ def main() -> None:
     fig_convergence()
     table_success()
     table_gap_runtime()
-    table_combinations()
+    table_critical()
+    table_e7()
+    table_limit()
+    table_weights()
     table_scale()
     table_handling()
+    seq_timing()
 
 
 if __name__ == "__main__":

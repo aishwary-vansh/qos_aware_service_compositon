@@ -2,18 +2,24 @@ rho,A,B,n,mean_diff,A_better,B_better,ties,p_value
 0.8,GA,Greedy-Repair,30,0.0,0,0,30,
 0.8,GA+Greedy,Greedy-Repair,30,0.0,0,0,30,
 0.8,GA+Greedy,GA,30,0.0,0,0,30,
+0.8,GA (penalty λ=1),GA,30,0.0,0,0,30,
 0.85,GA,Greedy-Repair,30,0.0,0,0,30,
 0.85,GA+Greedy,Greedy-Repair,30,0.0,0,0,30,
 0.85,GA+Greedy,GA,30,0.0,0,0,30,
+0.85,GA (penalty λ=1),GA,30,0.0,0,0,30,
 0.9,GA,Greedy-Repair,30,0.0,0,0,30,
 0.9,GA+Greedy,Greedy-Repair,30,0.0,0,0,30,
 0.9,GA+Greedy,GA,30,0.0,0,0,30,
+0.9,GA (penalty λ=1),GA,30,0.0,0,0,30,
 0.95,GA,Greedy-Repair,30,-7.811529944053615e-06,0,1,29,
 0.95,GA+Greedy,Greedy-Repair,30,0.0,0,0,30,
 0.95,GA+Greedy,GA,30,7.811529944053615e-06,1,0,29,
+0.95,GA (penalty λ=1),GA,30,3.596642298329492e-05,2,0,28,
 0.98,GA,Greedy-Repair,30,0.00010449672857172724,2,1,27,
 0.98,GA+Greedy,Greedy-Repair,30,0.0,0,0,30,
 0.98,GA+Greedy,GA,30,-0.00010449672857172724,1,2,27,
+0.98,GA (penalty λ=1),GA,30,0.00012428247379488999,1,0,29,
 1.0,GA,Greedy-Repair,30,0.06666666666666667,7,5,18,0.7744140625
 1.0,GA+Greedy,Greedy-Repair,30,0.26666666666666666,8,0,22,0.0078125
 1.0,GA+Greedy,GA,30,0.2,8,2,20,0.109375
+1.0,GA (penalty λ=1),GA,30,0.0998168280186655,5,3,22,0.453125

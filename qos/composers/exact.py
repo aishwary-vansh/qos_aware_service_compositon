@@ -69,18 +69,26 @@ def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0,
 
 
 def critical_tightness(problem: ProblemInstance, tol: float = 1e-3,
-                       time_limit: float | None = 60.0) -> float:
+                       time_limit: float | None = 60.0,
+                       mask=(1.0, 1.0, 1.0)) -> float:
     """Largest scalar tightness at which the instance still has a feasible composition.
+
+    ``mask`` selects which attributes are tightened; the others stay at
+    tau = 0 (unconstrained). A single-attribute mask always returns 1.0:
+    picking each task's own best service reaches that attribute's best
+    aggregate. Pairs and the triple can be infeasible before 1.
 
     Feasible sets are nested (a higher tightness only shrinks them), so
     feasibility is monotone in tightness and bisection with the MILP finds the
     threshold to within ``tol``. Experiments use it to express tightness
     relative to each instance's own limit: rho = tau / tau_star.
     """
+    mask = np.asarray(mask, dtype=float)
+
     def feasible(tightness: float) -> bool:
         # A time-out without a solution counts as infeasible, so tau_star can
         # be slightly underestimated on very large instances.
-        return solve_milp(problem.with_tightness(tightness), time_limit,
+        return solve_milp(problem.with_tightness(tightness * mask), time_limit,
                           feasibility_only=True).feasible
 
     if feasible(1.0):
