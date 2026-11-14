@@ -179,7 +179,7 @@ At the all-three limit (1.0 × τ\*), all three together is the hardest case:
 | QWS, all three | 63 % | 70 % | 90 % |
 | WS-DREAM, all three | 63 % | 83 % | 80 % |
 | Any pair, QWS | ≥ 90 % | 100 % | 100 % |
-| Any pair, WS-DREAM | ≥ 60 % (cost + reliability) | 100 % | 100 % |
+| Any pair, WS-DREAM | 100 % | 100 % | 100 % |
 
 Greedy-Local fails on different attributes in each dataset:
 - QWS: reliability (10 % with reliability alone, 7 % with latency + reliability).
@@ -194,7 +194,7 @@ Greedy-Local fails on different attributes in each dataset:
 
 At ρ = 0.90 and 0.95, all variants reach 100 %. At the limit, the differences lie within
 the ±16 pp interval of 30 runs. The paired test of λ = 1 against Deb's rules on the same
-30 instances is not significant (QWS: 5 against 3 better instances, p = 0.10; WS-DREAM:
+30 instances is not significant (QWS: 5 against 3 better instances, p = 0.45; WS-DREAM:
 6 against 3, p = 0.51). Over the 150 instances of E8 at ρ = 1, λ = 1 leads Deb's rules on
 QWS (79 % against 67 %, p = 0.005) but not on WS-DREAM (84 % against 82 %, p = 0.13).
 Deb's rules therefore remain the default.

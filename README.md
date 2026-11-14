@@ -50,8 +50,8 @@ that the whole chain meets three limits at once:
      measure every heuristic.
 5. **Controlled the tightness.** Each instance's feasibility limit τ\* is found exactly.
    Experiments sweep the relative tightness ρ = τ/τ\* up to 1, the edge of feasibility.
-6. **Ran ten experiments on each dataset** (E1–E9, 30 instances per setting, 2,250
-   instances per dataset): tightness, scalability in tasks and candidates, single
+6. **Ran the main experiments on each dataset** (E1–E6, E8, E9; 30 instances per
+   setting, 150 in E8; 2,220 instances per dataset, 2,460 with E7): tightness, scalability in tasks and candidates, single
    constraints against pairs against all three (with each subset's own critical
    tightness bisected by the exact solver), GA constraint handling, GA convergence,
    a 150-instance sweep at ρ ∈ {0.98, 0.99, 1.0}, and skewed utility weights. Paired
@@ -71,8 +71,8 @@ Success rate, N = 10 tasks and M = 20 candidates, 30 instances per value:
 |---|---|---|---|---|---|
 | Greedy-Local | 23 % | 0 % | 80 % | 0 % | 0.1 ms |
 | Greedy-Repair | 100 % | 63 % | 100 % | 63 % | under 1 ms |
-| GA | 100 % | 70 % | 100 % | 83 % | about 45 ms |
-| GA+Greedy | 100 % | 90 % | 100 % | 80 % | about 30 ms |
+| GA | 100 % | 70 % | 100 % | 83 % | 28–45 ms |
+| GA+Greedy | 100 % | 90 % | 100 % | 80 % | 21–31 ms |
 | Random | 0 % | 0 % | 3 % | 0 % | about 15 ms |
 
 - **Combining constraints is what makes it hard.** No single constraint binds (its
@@ -247,7 +247,7 @@ runs.
 |---|---|
 | Source code and experiment scripts | Done |
 | Results, graphs and tables (both datasets) | Done |
-| Technical report | Done: `report/report.pdf`, IEEE format, covers E1-E9. Still needs the GitHub link in Code Availability; E7 is not yet in the report |
+| Technical report | Done: `report/report.pdf`, 7 pages, IEEE format, covers E1–E9 including E7, with the GitHub link in Code Availability |
 | Presentation slides | Not started |
 | Individual viva | Scheduled by the instructor |
 | Peer evaluation form | If requested by the instructor |
