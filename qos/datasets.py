@@ -17,11 +17,8 @@ WS-DREAM dataset 1 (339 users x 5,825 services, Zheng et al.):
                   measurement (the dataset marks the rest with -1). This is an
                   observed invocation success ratio, used as a reliability proxy.
 
-Cost: neither dataset records a price. Each service is mapped to an AWS EC2
-t3 on-demand instance size (us-east-1, Linux) by its measured throughput, used
-as an indicator of provisioned capacity: the higher the throughput rank, the
-larger and more expensive the instance. Cost is that instance's hourly price,
-so a composite's cost is the hourly hosting cost of its services.
+Both datasets provide only latency and reliability. Cost is not included
+because neither dataset records pricing data.
 
 Download the raw files with ``python scripts/download_data.py``.
 """
@@ -59,7 +56,6 @@ class ServicePool:
 
     name: str
     reliability: np.ndarray        # (S,) in (0, 1]
-    cost: np.ndarray               # (S,) USD per hour
     latency: np.ndarray            # (S,) ms; per-user matrix for WS-DREAM below
     user_latency: np.ndarray | None = None   # (U, S) ms, NaN where invalid
     dropped: int = 0               # rows removed during cleaning
@@ -105,7 +101,6 @@ def load_qws(path: pathlib.Path | None = None, latency: str = "response_time") -
         name="QWS 2.0",
         latency=latency_values[valid],
         reliability=reliability[valid] / 100.0,
-        cost=price_by_throughput(throughput[valid]),
         dropped=int((~valid).sum()),
     )
 
@@ -128,7 +123,6 @@ def load_wsdream(directory: pathlib.Path | None = None) -> ServicePool:
         name="WS-DREAM",
         latency=np.nanmedian(user_latency, axis=0),
         reliability=success[keep],
-        cost=price_by_throughput(tp_median),
         user_latency=user_latency,
         dropped=int((~keep).sum()),
     )
@@ -152,7 +146,7 @@ def needs_reuse(dataset: str, n_tasks: int, n_candidates: int) -> bool:
 
 
 def make_instance(dataset: str, n_tasks: int, n_candidates: int, tightness=0.0,
-                  seed=None, weights=(1 / 3, 1 / 3, 1 / 3)) -> ProblemInstance:
+                  seed=None, weights=(0.5, 0.5)) -> ProblemInstance:
     """Build one composition instance from real services.
 
     ``n_tasks * n_candidates`` distinct services are drawn without
@@ -189,6 +183,5 @@ def make_instance(dataset: str, n_tasks: int, n_candidates: int, tightness=0.0,
     else:
         latency = pool.user_latency[user, chosen]
     shape = (n_tasks, n_candidates)
-    return ProblemInstance(latency.reshape(shape), pool.cost[chosen].reshape(shape),
-                           pool.reliability[chosen].reshape(shape),
+    return ProblemInstance(latency.reshape(shape), pool.reliability[chosen].reshape(shape),
                            weights=weights, tightness=tightness)

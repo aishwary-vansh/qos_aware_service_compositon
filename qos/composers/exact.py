@@ -26,7 +26,6 @@ def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0,
         max  sum_ij u[i, j] x[i, j]
         s.t. sum_j x[i, j] = 1                       for every task i
              sum_ij lat[i, j]  x[i, j] <= max_latency
-             sum_ij cost[i, j] x[i, j] <= max_cost
              sum_ij log rel[i, j] x[i, j] >= log min_reliability
     If the problem is infeasible the result has ``feasible=False`` and
     status "infeasible"; its assignment is the unconstrained optimum.
@@ -44,9 +43,9 @@ def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0,
     one_per_task = LinearConstraint(sparse.kron(sparse.identity(n), np.ones((1, m)), format="csr"),
                                     1, 1)
     qos = LinearConstraint(
-        np.vstack([problem.latency.ravel(), problem.cost.ravel(), -problem.log_rel.ravel()]),
+        np.vstack([problem.latency.ravel(), -problem.log_rel.ravel()]),
         -np.inf,
-        [c.max_latency, c.max_cost, -np.log(c.min_reliability)],
+        [c.max_latency, -np.log(c.min_reliability)],
     )
     options = {"time_limit": time_limit} if time_limit is not None else {}
     objective = np.zeros(n * m) if feasibility_only else -problem.local_utility.ravel()
@@ -70,13 +69,13 @@ def solve_milp(problem: ProblemInstance, time_limit: float | None = 60.0,
 
 def critical_tightness(problem: ProblemInstance, tol: float = 1e-3,
                        time_limit: float | None = 60.0,
-                       mask=(1.0, 1.0, 1.0)) -> float:
+                       mask=(1.0, 1.0)) -> float:
     """Largest scalar tightness at which the instance still has a feasible composition.
 
     ``mask`` selects which attributes are tightened; the others stay at
     tau = 0 (unconstrained). A single-attribute mask always returns 1.0:
     picking each task's own best service reaches that attribute's best
-    aggregate. Pairs and the triple can be infeasible before 1.
+    aggregate. The pair can be infeasible before 1.
 
     Feasible sets are nested (a higher tightness only shrinks them), so
     feasibility is monotone in tightness and bisection with the MILP finds the

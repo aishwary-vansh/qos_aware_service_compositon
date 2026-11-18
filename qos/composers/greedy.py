@@ -33,15 +33,13 @@ def _single_swap_table(problem: ProblemInstance, assignment: np.ndarray):
     """
     rows = np.arange(problem.n_tasks)
     lat_now = problem.latency[rows, assignment]
-    cost_now = problem.cost[rows, assignment]
     logr_now = problem.log_rel[rows, assignment]
     util_now = problem.local_utility[rows, assignment]
 
     latency = lat_now.sum() + (problem.latency - lat_now[:, None])
-    cost = cost_now.sum() + (problem.cost - cost_now[:, None])
     log_rel = logr_now.sum() + (problem.log_rel - logr_now[:, None])
     utility = util_now.sum() + (problem.local_utility - util_now[:, None])
-    return utility, problem.violation_of(latency, cost, log_rel)
+    return utility, problem.violation_of(latency, log_rel)
 
 
 def greedy_repair(problem: ProblemInstance, improve: bool = True,

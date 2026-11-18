@@ -1,211 +1,91 @@
-experiment,seed,n_tasks,n_candidates,label,level,rho,tau_star,tau_latency,tau_cost,tau_reliability,max_latency,max_cost,min_reliability,algorithm,feasible,utility,latency,cost,reliability,violation,runtime_s,evaluations,status,upper_bound,w_latency,w_cost,w_reliability,opt_feasible,opt_status,opt_utility,tau_critical
-E4_critical,0,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,0,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,0,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,0,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9765625
-E4_critical,0,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9951171875
-E4_critical,0,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.99609375
-E4_critical,0,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9716796875
-E4_critical,1,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,1,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,1,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,1,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9541015625
-E4_critical,1,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.994140625
-E4_critical,1,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9765625
-E4_critical,1,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.921875
-E4_critical,2,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,2,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,2,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,2,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9609375
-E4_critical,2,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,2,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,2,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.951171875
-E4_critical,3,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,3,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,3,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,3,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.955078125
-E4_critical,3,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,3,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.982421875
-E4_critical,3,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9453125
-E4_critical,4,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,4,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,4,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,4,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9775390625
-E4_critical,4,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,4,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.982421875
-E4_critical,4,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9638671875
-E4_critical,5,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,5,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,5,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,5,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9453125
-E4_critical,5,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9951171875
-E4_critical,5,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.982421875
-E4_critical,5,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9453125
-E4_critical,6,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,6,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,6,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,6,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.970703125
-E4_critical,6,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9921875
-E4_critical,6,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.99609375
-E4_critical,6,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.96875
-E4_critical,7,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,7,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,7,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,7,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.978515625
-E4_critical,7,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.99609375
-E4_critical,7,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9921875
-E4_critical,7,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9716796875
-E4_critical,8,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,8,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,8,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,8,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.96875
-E4_critical,8,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9921875
-E4_critical,8,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.98828125
-E4_critical,8,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.966796875
-E4_critical,9,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,9,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,9,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,9,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9443359375
-E4_critical,9,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9912109375
-E4_critical,9,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,9,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.943359375
-E4_critical,10,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,10,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,10,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,10,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.96875
-E4_critical,10,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.98828125
-E4_critical,10,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,10,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9619140625
-E4_critical,11,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,11,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,11,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,11,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9638671875
-E4_critical,11,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.994140625
-E4_critical,11,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,11,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9638671875
-E4_critical,12,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,12,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,12,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,12,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.966796875
-E4_critical,12,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.990234375
-E4_critical,12,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.990234375
-E4_critical,12,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9599609375
-E4_critical,13,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,13,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,13,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,13,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.982421875
-E4_critical,13,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9921875
-E4_critical,13,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.984375
-E4_critical,13,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.97265625
-E4_critical,14,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,14,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,14,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,14,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.966796875
-E4_critical,14,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.990234375
-E4_critical,14,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9853515625
-E4_critical,14,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9580078125
-E4_critical,15,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,15,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,15,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,15,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9765625
-E4_critical,15,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9951171875
-E4_critical,15,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.990234375
-E4_critical,15,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9716796875
-E4_critical,16,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,16,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,16,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,16,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.984375
-E4_critical,16,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9970703125
-E4_critical,16,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.982421875
-E4_critical,16,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9755859375
-E4_critical,17,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,17,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,17,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,17,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9775390625
-E4_critical,17,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9912109375
-E4_critical,17,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,17,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9716796875
-E4_critical,18,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,18,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,18,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,18,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.966796875
-E4_critical,18,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,18,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.990234375
-E4_critical,18,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9609375
-E4_critical,19,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,19,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,19,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,19,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.970703125
-E4_critical,19,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9921875
-E4_critical,19,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9912109375
-E4_critical,19,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9697265625
-E4_critical,20,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,20,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,20,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,20,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.978515625
-E4_critical,20,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,20,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.986328125
-E4_critical,20,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.958984375
-E4_critical,21,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,21,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,21,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,21,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9736328125
-E4_critical,21,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.99609375
-E4_critical,21,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9921875
-E4_critical,21,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9736328125
-E4_critical,22,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,22,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,22,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,22,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9677734375
-E4_critical,22,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9873046875
-E4_critical,22,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9873046875
-E4_critical,22,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9560546875
-E4_critical,23,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,23,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,23,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,23,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.97265625
-E4_critical,23,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,23,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.990234375
-E4_critical,23,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9658203125
-E4_critical,24,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,24,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,24,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,24,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.984375
-E4_critical,24,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,24,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,24,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9755859375
-E4_critical,25,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,25,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,25,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,25,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9765625
-E4_critical,25,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,25,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9765625
-E4_critical,25,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9658203125
-E4_critical,26,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,26,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,26,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,26,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.966796875
-E4_critical,26,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.994140625
-E4_critical,26,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9833984375
-E4_critical,26,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.955078125
-E4_critical,27,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,27,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,27,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,27,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9658203125
-E4_critical,27,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.99609375
-E4_critical,27,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9853515625
-E4_critical,27,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9599609375
-E4_critical,28,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,28,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,28,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,28,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.97265625
-E4_critical,28,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,28,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,28,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.970703125
-E4_critical,29,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,29,10,20,cost only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,29,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,,,,,1.0
-E4_critical,29,10,20,latency + cost,,,,,,,,,,,,,,,,,,,,,,,,,,,0.970703125
-E4_critical,29,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
-E4_critical,29,10,20,cost + reliability,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
-E4_critical,29,10,20,all three,,,,,,,,,,,,,,,,,,,,,,,,,,,0.9658203125
+experiment,seed,n_tasks,n_candidates,label,level,rho,tau_star,tau_latency,tau_reliability,max_latency,min_reliability,algorithm,feasible,utility,latency,reliability,violation,runtime_s,evaluations,status,upper_bound,w_latency,w_reliability,opt_feasible,opt_status,opt_utility,tau_critical
+E4_critical,0,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,0,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,0,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9951171875
+E4_critical,1,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,1,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,1,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.994140625
+E4_critical,2,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,2,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,2,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
+E4_critical,3,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,3,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,3,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
+E4_critical,4,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,4,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,4,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
+E4_critical,5,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,5,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,5,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9951171875
+E4_critical,6,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,6,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,6,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9921875
+E4_critical,7,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,7,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,7,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.99609375
+E4_critical,8,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,8,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,8,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9921875
+E4_critical,9,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,9,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,9,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9912109375
+E4_critical,10,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,10,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,10,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.98828125
+E4_critical,11,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,11,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,11,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.994140625
+E4_critical,12,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,12,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,12,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.990234375
+E4_critical,13,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,13,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,13,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9921875
+E4_critical,14,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,14,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,14,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.990234375
+E4_critical,15,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,15,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,15,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9951171875
+E4_critical,16,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,16,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,16,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9970703125
+E4_critical,17,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,17,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,17,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9912109375
+E4_critical,18,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,18,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,18,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
+E4_critical,19,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,19,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,19,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9921875
+E4_critical,20,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,20,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,20,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
+E4_critical,21,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,21,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,21,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.99609375
+E4_critical,22,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,22,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,22,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9873046875
+E4_critical,23,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,23,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,23,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9931640625
+E4_critical,24,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,24,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,24,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
+E4_critical,25,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,25,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,25,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
+E4_critical,26,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,26,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,26,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.994140625
+E4_critical,27,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,27,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,27,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.99609375
+E4_critical,28,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,28,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,28,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9892578125
+E4_critical,29,10,20,latency only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,29,10,20,reliability only,,,,,,,,,,,,,,,,,,,,,,,1.0
+E4_critical,29,10,20,latency + reliability,,,,,,,,,,,,,,,,,,,,,,,0.9931640625

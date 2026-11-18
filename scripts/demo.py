@@ -30,13 +30,13 @@ def main() -> None:
         problem = base.with_tightness(tightness)
         c = problem.constraints
         print(f"\ntightness={tightness:.2f}  Lmax={c.max_latency:.0f} ms  "
-              f"Cmax={c.max_cost:.2f}  Rmin={c.min_reliability:.4f}")
+              f"Rmin={c.min_reliability:.4f}")
         print(f"  {'algorithm':<14}{'feasible':>9}{'utility':>9}{'latency':>9}"
-              f"{'cost':>8}{'rel':>8}{'time(ms)':>10}{'evals':>8}")
+              f"{'rel':>8}{'time(ms)':>10}{'evals':>8}")
         for name, run in ALGORITHMS.items():
             r = run(problem, seed=args.seed)
             print(f"  {name:<14}{str(r.feasible):>9}{r.utility:>9.4f}{r.latency:>9.0f}"
-                  f"{r.cost:>8.2f}{r.reliability:>8.4f}{r.runtime_s * 1e3:>10.1f}{r.evaluations:>8}")
+                  f"{r.reliability:>8.4f}{r.runtime_s * 1e3:>10.1f}{r.evaluations:>8}")
 
 
 if __name__ == "__main__":

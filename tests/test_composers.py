@@ -37,8 +37,8 @@ def test_unconstrained_greedy_local_is_optimal():
 
 def test_greedy_repair_fixes_violated_local_choice():
     found = 0
-    for seed in range(20):
-        p = instance(10, 15, tightness=0.86, seed=seed)
+    for seed in range(50):
+        p = instance(10, 15, tightness=0.95, seed=seed)
         local, repaired = greedy_local(p), greedy_repair(p)
         if not local.feasible and repaired.feasible:
             found += 1
@@ -102,7 +102,7 @@ def test_ga_close_to_optimum_on_medium_instance():
 
 def test_infeasible_problem_reported_by_everyone():
     p = instance(6, 5, seed=0, tightness=0.0)
-    p = p.with_constraints(Constraints(max_latency=1.0, max_cost=0.01, min_reliability=0.999))
+    p = p.with_constraints(Constraints(max_latency=1.0, min_reliability=0.999))
     for name, run in ALGORITHMS.items():
         assert not run(p, seed=0).feasible, name
     assert solve_milp(p).status == "infeasible"
@@ -125,7 +125,7 @@ def test_critical_tightness_is_feasibility_threshold(seed):
         assert not brute_force(p.with_tightness(min(1.0, tau_star + 1e-3))).feasible
 
 
-@pytest.mark.parametrize("mask", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+@pytest.mark.parametrize("mask", [(1, 0), (0, 1)])
 def test_critical_tightness_single_attribute_is_one(mask):
     # Each attribute alone is reachable at its own best aggregate.
     p = instance(6, 8, tightness=0.0, seed=0)
@@ -134,10 +134,10 @@ def test_critical_tightness_single_attribute_is_one(mask):
 
 def test_critical_tightness_masks_are_nested():
     p = instance(8, 10, tightness=0.0, seed=1)
-    all_three = critical_tightness(p)
-    for mask in ((1, 1, 0), (1, 0, 1), (0, 1, 1)):
+    all_two = critical_tightness(p)
+    for mask in ((1, 0), (0, 1)):
         # Loosening one attribute can only raise the critical tightness.
-        assert critical_tightness(p, mask=mask) >= all_three - 1e-9
+        assert critical_tightness(p, mask=mask) >= all_two - 1e-9
 
 
 def test_brute_force_refuses_huge_space():

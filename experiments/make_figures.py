@@ -275,9 +275,8 @@ def fig_scalability(s_n: pd.DataFrame, s_m: pd.DataFrame, figs: pathlib.Path):
     save(fig, figs, "fig6_scalability")
 
 
-ATTRIBUTE_MODES = ["latency only", "cost only", "reliability only", "latency + cost",
-                   "latency + reliability", "cost + reliability", "all three"]
-ATTRIBUTE_TICKS = ["Lat.", "Cost", "Rel.", "Lat.+\nCost", "Lat.+\nRel.", "Cost+\nRel.", "All 3"]
+ATTRIBUTE_MODES = ["latency only", "reliability only", "latency + reliability"]
+ATTRIBUTE_TICKS = ["Lat.", "Rel.", "Lat.+\nRel."]
 
 
 def fig_attribute(s: pd.DataFrame, df: pd.DataFrame, figs: pathlib.Path):
@@ -471,7 +470,7 @@ def main() -> None:
     print("  table  E8_wilcoxon.csv/.md")
 
     e9 = load("E9_weights")
-    s9 = summarise(e9, ["level", "label", "w_latency", "w_cost", "w_reliability"])
+    s9 = summarise(e9, ["level", "label", "w_latency", "w_reliability"])
     write_table(s9, tables, "E9_weights_summary")
 
     e5 = load("E5_handling")

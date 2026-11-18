@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from qos.datasets import (DATA_DIR, EC2_T3_HOURLY_USD, load, load_qws, make_instance,
-                          needs_reuse, price_by_throughput)
+from qos.datasets import (DATA_DIR, load, load_qws, make_instance,
+                          needs_reuse)
 
 HAVE_QWS = (DATA_DIR / "qws" / "qws2.txt").exists()
 HAVE_WSDREAM = (DATA_DIR / "wsdream" / "dataset1" / "rtMatrix.txt").exists()
@@ -13,20 +13,12 @@ needs = {
 DATASETS = [pytest.param(d, marks=m) for d, m in needs.items()]
 
 
-def test_price_tiers_follow_throughput_rank():
-    prices = price_by_throughput(np.arange(60, dtype=float))
-    assert set(prices) == set(EC2_T3_HOURLY_USD)
-    assert np.all(np.diff(prices) >= 0)                  # more throughput, never cheaper
-    assert np.all(np.unique(prices, return_counts=True)[1] == 10)
-
-
 @pytest.mark.parametrize("dataset", DATASETS)
 def test_pool_values_are_valid(dataset):
     pool = load(dataset)
     assert pool.size > 2000
     assert np.all(pool.latency > 0)
     assert np.all((pool.reliability > 0) & (pool.reliability <= 1))
-    assert set(np.unique(pool.cost)) <= set(EC2_T3_HOURLY_USD)
 
 
 @pytest.mark.parametrize("dataset", DATASETS)
@@ -52,7 +44,7 @@ def test_large_instance_reuses_services_across_tasks_only():
     p = make_instance("qws", 100, 50, seed=0)
     assert p.latency.shape == (100, 50)
     for i in range(100):   # never the same service twice within one task
-        assert len(set(zip(p.latency[i], p.reliability[i], p.cost[i]))) > 45
+        assert len(set(zip(p.latency[i], p.reliability[i]))) > 45
 
 
 def test_unknown_dataset_rejected():

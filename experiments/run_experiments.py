@@ -78,13 +78,9 @@ VARIANTS = {
 }
 
 ATTRIBUTE_MODES = {
-    "latency only": lambda t: (t, 0.0, 0.0),
-    "cost only": lambda t: (0.0, t, 0.0),
-    "reliability only": lambda t: (0.0, 0.0, t),
-    "latency + cost": lambda t: (t, t, 0.0),
-    "latency + reliability": lambda t: (t, 0.0, t),
-    "cost + reliability": lambda t: (0.0, t, t),
-    "all three": lambda t: (t, t, t),
+    "latency only": lambda t: (t, 0.0),
+    "reliability only": lambda t: (0.0, t),
+    "latency + reliability": lambda t: (t, t),
 }
 # E4 levels, relative to the instance's all-three critical tightness tau_star.
 # Every level is multiplied by tau_star and clamped to [0, 1] (the valid range
@@ -134,29 +130,27 @@ def build_tasks(runs: int, dataset: str, limit_runs: int = 150) -> list[dict]:
         for rho in (0.98, 0.99, 1.0):
             add("E8_limit", k, 10, 20, rho, rho, E1_ALGORITHMS, rho=rho)
     # E9: non-equal utility weights on the same instances as E1.
-    for w in ((0.6, 0.2, 0.2), (0.2, 0.6, 0.2), (0.2, 0.2, 0.6)):
+    for w in ((0.7, 0.3), (0.3, 0.7)):
         for rho in (0.95, 1.0):
             for k in range(runs):
-                add("E9_weights", k, 10, 20, f"w={w[0]:g}/{w[1]:g}/{w[2]:g}", rho,
+                add("E9_weights", k, 10, 20, f"w={w[0]:g}/{w[1]:g}", rho,
                     MAIN_ALGORITHMS, rho=rho, weights=w)
     return tasks
 
 
 def _row(task: dict, problem, tightness, tau_star, algorithm: str, result) -> dict:
-    t = np.broadcast_to(np.asarray(tightness, dtype=float), (3,))
+    t = np.broadcast_to(np.asarray(tightness, dtype=float), (2,))
     return {
         "experiment": task["experiment"], "seed": task["seed"],
         "n_tasks": task["n"], "n_candidates": task["m"],
         "label": task["label"], "level": task["level"],
         "rho": task["rho"], "tau_star": tau_star,
-        "tau_latency": t[0], "tau_cost": t[1], "tau_reliability": t[2],
+        "tau_latency": t[0], "tau_reliability": t[1],
         "max_latency": problem.constraints.max_latency,
-        "max_cost": problem.constraints.max_cost,
         "min_reliability": problem.constraints.min_reliability,
         **result.summary(), "algorithm": algorithm,
         "upper_bound": result.history.get("upper_bound", np.nan),
-        "w_latency": problem.weights[0], "w_cost": problem.weights[1],
-        "w_reliability": problem.weights[2],
+        "w_latency": problem.weights[0], "w_reliability": problem.weights[1],
     }
 
 

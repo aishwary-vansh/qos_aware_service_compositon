@@ -34,9 +34,8 @@ plt.rcParams.update({
 MAIN = ["Greedy-Local", "Greedy-Repair", "GA", "GA+Greedy", "Random"]
 CORE = ["Greedy-Repair", "GA", "GA+Greedy"]
 RHO = r"Relative tightness $\rho = \tau / \tau^*$"
-MODES = ["latency only", "cost only", "reliability only", "latency + cost",
-         "latency + reliability", "cost + reliability", "all three"]
-MODE_TICKS = ["L", "C", "R", "L+C", "L+R", "C+R", "L+C+R"]
+MODES = ["latency only", "reliability only", "latency + reliability"]
+MODE_TICKS = ["L", "R", "L+R"]
 
 
 def table(dataset: str, name: str) -> pd.DataFrame:
@@ -186,7 +185,7 @@ def table_critical() -> None:
     # The all-three column must reproduce the E1 instances' tau_star.
     for k in DATASETS:
         e1 = pd.read_csv(RESULTS / k / "raw" / "E1_relative.csv").drop_duplicates("seed")
-        diff = abs(means[k]["all three"] - e1["tau_star"].mean())
+        diff = abs(means[k]["latency + reliability"] - e1["tau_star"].mean())
         print(f"  mask check ({k}): all-three tau mean vs E1 tau_star mean differ by {diff:.1e}")
 
 
@@ -236,15 +235,14 @@ def table_limit() -> None:
 
 def table_weights() -> None:
     """E9: success at the limit under skewed utility weights (rho = 1.0)."""
-    tags = {"w=0.6/0.2/0.2": r"$w_L=.6$", "w=0.2/0.6/0.2": r"$w_C=.6$",
-            "w=0.2/0.2/0.6": r"$w_R=.6$"}
+    tags = {"w=0.7/0.3": r"$w_L=.7$", "w=0.3/0.7": r"$w_R=.7$"}
     rows = []
     for k, label in DATASETS.items():
         p = table(k, "E9_weights")
         p = p[(p["level"] == 1.0) & (p["algorithm"] != "Optimal-MILP")].pivot(
             index="label", columns="algorithm", values="success_rate")
         for tag, tex in tags.items():
-            cells = [label if tex == tags["w=0.6/0.2/0.2"] else "", tex]
+            cells = [label if tex == list(tags.values())[0] else "", tex]
             cells += [f"{p.loc[tag, n]:.2f}" for n in ("Greedy-Repair", "GA", "GA+Greedy")]
             rows.append(" & ".join(cells) + r" \\")
         rows.append(r"\midrule")

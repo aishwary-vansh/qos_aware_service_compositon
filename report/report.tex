@@ -12,7 +12,6 @@
 \graphicspath{{figures/}}
 \DeclareMathOperator*{\argmax}{arg\,max}
 \newcommand{\Lmax}{L_{\max}}
-\newcommand{\Cmax}{C_{\max}}
 \newcommand{\Rmin}{R_{\min}}
 % Let floats use more of a page, so they stay near their text.
 \renewcommand{\topfraction}{0.9}
@@ -24,7 +23,7 @@
 
 \begin{document}
 
-\title{QoS-Aware Service Composition under Latency, Cost and Reliability Constraints}
+\title{QoS-Aware Service Composition under Latency and Reliability Constraints}
 
 \author{\IEEEauthorblockN{Aishwary Vansh}
 \IEEEauthorblockA{\textit{Dept. of Computer Science and Engineering}\\
@@ -40,7 +39,7 @@ Sri City, India}
 \maketitle
 
 \begin{abstract}
-A composite cloud service must meet end-to-end limits on latency, cost and reliability at the same time. We model candidate services as QoS vectors taken from two real datasets, QWS~2.0 and WS-DREAM, with cost assigned from public cloud prices. On these vectors we implement a greedy composer with constraint-aware repair and a genetic algorithm (GA). We compare their success rate and solution quality as the constraints tighten, measuring quality against the exact optimum from an integer program. Tightness is expressed relative to the feasibility limit of each instance. Over 4,920 problem instances (2,460 per dataset), both composers met all three constraints in every instance up to 98\% of that limit, within 0.023\% of the optimum in the main sweeps ($\rho\le0.98$). At the limit itself, Greedy-Repair succeeded in 63\% of instances on both datasets, against 70--83\% for the GA and 80--90\% for a GA seeded with the greedy result. Greedy-Repair ran in under 1\,ms, about 100 times faster than the GA. A single constraint never binds (its critical tightness is 1 by construction), and the all-three limit (0.904 on QWS, 0.962 on WS-DREAM) lies below every pair's, so the difficulty comes from combining constraints.
+A composite cloud service must meet end-to-end limits on latency and reliability at the same time. We model candidate services as QoS vectors taken from two real datasets, QWS~2.0 and WS-DREAM, using measured response time and reliability. On these vectors we implement a greedy composer with constraint-aware repair and a genetic algorithm (GA). We compare their success rate and solution quality as the constraints tighten, measuring quality against the exact optimum from an integer program. Tightness is expressed relative to the feasibility limit of each instance. Over 4,920 problem instances (2,460 per dataset), both composers met both constraints in every instance up to 98\% of that limit, matching the optimum exactly in the main sweeps ($\rho\le0.98$). At the limit itself, Greedy-Repair succeeded in 90\% of instances on QWS and 100\% on WS-DREAM, against 87\%/100\% for the GA and 97\%/100\% for a GA seeded with the greedy result. Greedy-Repair ran in under 1\,ms, about 100 times faster than the GA. A single constraint never binds (its critical tightness is 1 by construction), and the both-constraint limit (0.963 on QWS, 0.993 on WS-DREAM) lies below every single attribute's, so the difficulty comes from combining constraints.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -50,16 +49,16 @@ QoS-aware service composition, cloud services, genetic algorithm, greedy algorit
 \section{Introduction}
 Cloud applications are increasingly built by chaining independent services. A workflow such as \emph{authenticate, fetch, process, store, notify} has one abstract task per step, and each task can be served by several functionally equivalent services that differ in Quality of Service (QoS). The composition problem is to select one candidate per task so that the whole workflow meets the end-to-end requirements of the user~\cite{sheng2014,jula2014}.
 
-\textbf{Research problem.} Composite cloud services must satisfy multiple QoS constraints simultaneously. The attributes conflict: the fastest and most reliable services are usually the most expensive. The search space also grows exponentially, so 10 tasks with 20 candidates each already allow about $10^{13}$ compositions.
+\textbf{Research problem.} Composite cloud services must satisfy multiple QoS constraints simultaneously. The attributes conflict: the fastest services tend to be the least reliable. The search space also grows exponentially, so 10 tasks with 20 candidates each already allow about $10^{13}$ compositions.
 
-\textbf{Research gap.} Student implementations of multi-constraint composition that handle latency, cost and reliability together are still limited. Such implementations seldom use real QoS data, measure results against a proven optimum, or vary constraint tightness in a controlled way.
+\textbf{Research gap.} Student implementations of multi-constraint composition that handle latency and reliability together are still limited. Such implementations seldom use real QoS data, measure results against a proven optimum, or vary constraint tightness in a controlled way.
 
 \textbf{Proposed solution.} We model a set of candidate services with QoS vectors, implement a greedy and a GA-based composer, and compare their success rate and solution quality under different constraint tightness. Our contributions are:
 \begin{itemize}
-\item an open Python implementation that enforces latency, cost and reliability jointly, with a greedy composer that adds constraint-aware repair and a GA, both evaluated against an exact integer program;
-\item an evaluation on two real QoS datasets, QWS~2.0~\cite{almasri2007,almasri2008} and WS-DREAM~\cite{zheng2014}, with cost assigned from public cloud prices;
+\item an open Python implementation that enforces latency and reliability jointly, with a greedy composer that adds constraint-aware repair and a GA, both evaluated against an exact integer program;
+\item an evaluation on two real QoS datasets, QWS~2.0~\cite{almasri2007,almasri2008} and WS-DREAM~\cite{zheng2014}, using only measured attributes;
 \item a \emph{relative tightness} measure based on the feasibility limit of each instance, which places the comparison where the constraints actually bind;
-\item evidence on both datasets that a single constraint alone never binds, and that the all-three limit (0.904 and 0.962) lies below every pair's limit, so the difficulty comes from combining constraints;
+\item evidence on both datasets that a single constraint alone never binds, and that the both-constraint limit (0.963 on QWS and 0.993 on WS-DREAM) lies below every single attribute's limit, so the difficulty comes from combining constraints;
 \end{itemize}
 
 \section{Related Work}\label{sec:related}
@@ -71,35 +70,33 @@ Surveys by Sheng \emph{et al.}~\cite{sheng2014} and Jula \emph{et al.}~\cite{jul
 
 \textbf{Evolutionary methods.} Canfora \emph{et al.}~\cite{canfora2005} showed that a GA is a practical alternative to integer programming for composition. Deb~\cite{deb2000} proposed parameter-free feasibility rules for constraint handling in GAs, which we compare with static penalties.
 
-\textbf{Real QoS data.} QWS~\cite{almasri2007,almasri2008} and WS-DREAM~\cite{zheng2014} are the most widely used public collections of measured web-service QoS. Neither records a price, so studies commonly generate cost; we instead derive it from a public price list.
+\textbf{Real QoS data.} QWS~\cite{almasri2007,almasri2008} and WS-DREAM~\cite{zheng2014} are the most widely used public collections of measured web-service QoS. Neither records a price; following the common practice of studies that focus on directly measured attributes, we restrict our evaluation to the latency and reliability values present in both datasets.
 
 \section{Problem Formulation}\label{sec:problem}
 
 \subsection{Service and Composition Model}
-A workflow has $N$ abstract tasks executed in sequence. Each task $i$ has $M$ candidates, and candidate $j$ has a QoS vector $q_{ij} = (l_{ij}, c_{ij}, r_{ij})$ of latency, cost and reliability. A composition is a vector $a = (a_1,\dots,a_N)$, where $a_i$ is the candidate chosen for task $i$, so there are $M^N$ compositions. End-to-end QoS is
+A workflow has $N$ abstract tasks executed in sequence. Each task $i$ has $M$ candidates, and candidate $j$ has a QoS vector $q_{ij} = (l_{ij}, r_{ij})$ of latency and reliability. A composition is a vector $a = (a_1,\dots,a_N)$, where $a_i$ is the candidate chosen for task $i$, so there are $M^N$ compositions. End-to-end QoS is
 \begin{equation}
 L(a) = \sum_{i=1}^{N} l_{i a_i},\quad
-C(a) = \sum_{i=1}^{N} c_{i a_i},\quad
 R(a) = \prod_{i=1}^{N} r_{i a_i}.
 \end{equation}
-With $\log R(a) = \sum_i \log r_{i a_i}$, all three aggregates are additive over tasks.
+With $\log R(a) = \sum_i \log r_{i a_i}$, both aggregates are additive over tasks.
 
 \subsection{Objective and Constraints}
-The best and worst aggregate of each attribute come from optimizing that attribute alone, for example $L^{b} = \sum_i \min_j l_{ij}$ and $L^{w} = \sum_i \max_j l_{ij}$. The bounds $C^{b}, C^{w}$ and $\log R^{b}, \log R^{w}$ follow in the same way. Each aggregate is normalized to $[0,1]$, with 1 the best value:
+The best and worst aggregate of each attribute come from optimizing that attribute alone, for example $L^{b} = \sum_i \min_j l_{ij}$ and $L^{w} = \sum_i \max_j l_{ij}$. The bounds $\log R^{b}, \log R^{w}$ follow in the same way. Each aggregate is normalized to $[0,1]$, with 1 the best value:
 \begin{equation}
-\hat L = \frac{L^{w}-L(a)}{L^{w}-L^{b}},\qquad
-\hat C = \frac{C^{w}-C(a)}{C^{w}-C^{b}},
+\hat L = \frac{L^{w}-L(a)}{L^{w}-L^{b}},
 \end{equation}
 \begin{equation}
 \hat R = \frac{\log R(a)-\log R^{w}}{\log R^{b}-\log R^{w}}.
 \end{equation}
-The objective is a Simple Additive Weighting utility with $w_L+w_C+w_R=1$:
+The objective is a Simple Additive Weighting utility with $w_L+w_R=1$:
 \begin{equation}
-U(a) = w_L\hat L + w_C\hat C + w_R\hat R.
+U(a) = w_L\hat L + w_R\hat R.
 \end{equation}
 Because every aggregate is additive, $U$ splits exactly into per-service terms, $U(a)=\sum_i u_{i a_i}$. The problem is
 \begin{equation}
-\max_{a}\; U(a) \;\;\text{s.t.}\;\; L(a)\le \Lmax,\; C(a)\le \Cmax,\; R(a)\ge \Rmin.
+\max_{a}\; U(a) \;\;\text{s.t.}\;\; L(a)\le \Lmax,\; R(a)\ge \Rmin.
 \end{equation}
 Constraint violation $V(a)$ sums the normalized excess over each limit, with each excess divided by the same range used in (2) and (3). A composition is feasible when $V(a)=0$, up to a tolerance of $10^{-7}$.
 
@@ -108,7 +105,7 @@ Absolute tightness $\tau\in[0,1]$ places each bound between the worst and best a
 \begin{equation}
 \Lmax = L^{b} + (1-\tau)(L^{w}-L^{b}),
 \end{equation}
-and likewise for $\Cmax$ and, in log space, for $\Rmin$. At $\tau=0$ every composition is feasible. Feasible sets are nested in $\tau$, so each instance has a \emph{critical tightness} $\tau^{*}$: the largest $\tau$ that still admits a feasible composition. We find it by bisection with the exact solver, to within $10^{-3}$. \emph{Relative tightness} is $\rho = \tau / \tau^{*}$; with $\rho\le 1$ every instance is solvable, and $\rho=1$ is the edge of feasibility.
+and likewise, in log space, for $\Rmin$. At $\tau=0$ every composition is feasible. Feasible sets are nested in $\tau$, so each instance has a \emph{critical tightness} $\tau^{*}$: the largest $\tau$ that still admits a feasible composition. We find it by bisection with the exact solver, to within $10^{-3}$. \emph{Relative tightness} is $\rho = \tau / \tau^{*}$; with $\rho\le 1$ every instance is solvable, and $\rho=1$ is the edge of feasibility.
 
 \subsection{Complexity}
 Choosing one item from each class under several resource limits is the Multi-choice Multi-dimensional Knapsack Problem, which is NP-hard~\cite{yu2007}. This motivates the heuristics below.
@@ -196,7 +193,7 @@ Constraint handling & Deb's rules (default), or penalty $U-\lambda V$ \\
 \end{table}
 
 \subsection{Reference Solvers}
-\textbf{Optimal-MILP} solves the 0-1 program with variables $x_{ij}$: maximize $\sum_{ij} u_{ij}x_{ij}$ subject to $\sum_j x_{ij}=1$ for every task and three linear QoS rows, with reliability in log form. All terms are linear, so the model is exact. We solve it with HiGHS~\cite{huangfu2018} through SciPy~\cite{virtanen2020}. It gives the optimum $U^{*}$ (within HiGHS's default relative gap of 0.01\%, so a heuristic can exceed $U^{*}$ by at most that margin, as happened in 20 of over 25,000 runs) and proves infeasibility, and unit tests confirm that it agrees with brute-force enumeration. \textbf{Random} search keeps the best of 30,000 uniform samples, close to the worst-case GA budget of 29,500 evaluations.
+\textbf{Optimal-MILP} solves the 0-1 program with variables $x_{ij}$: maximize $\sum_{ij} u_{ij}x_{ij}$ subject to $\sum_j x_{ij}=1$ for every task and two linear QoS rows, with reliability in log form. All terms are linear, so the model is exact. We solve it with HiGHS~\cite{huangfu2018} through SciPy~\cite{virtanen2020}. It gives the optimum $U^{*}$ (within HiGHS's default relative gap of 0.01\%, so a heuristic can exceed $U^{*}$ by at most that margin, as happened in 20 of over 25,000 runs) and proves infeasibility, and unit tests confirm that it agrees with brute-force enumeration. \textbf{Random} search keeps the best of 30,000 uniform samples, close to the worst-case GA budget of 29,500 evaluations.
 
 \begin{figure*}[t]
 \centering
@@ -208,7 +205,7 @@ Constraint handling & Deb's rules (default), or penalty $U-\lambda V$ \\
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{constraint_combinations}
-\caption{Success rate when single constraints, pairs or all three are tightened to the all-three limit $\tau^{*}$, on (a) QWS 2.0 and (b) WS-DREAM.}
+\caption{Success rate when a single constraint or both constraints together are tightened to the both-constraint limit $\tau^{*}$, on (a) QWS 2.0 and (b) WS-DREAM.}
 \label{fig:combinations}
 \end{figure*}
 
@@ -221,9 +218,7 @@ Table~\ref{tab:data} summarizes the two real datasets.
 
 \textbf{WS-DREAM} dataset~1~\cite{zheng2014} contains response times and throughputs measured by 339 users on 5,825 services; invalid invocations are marked $-1$. Each instance is built for one random user, using that user's measured response time. Reliability is the share of users whose invocation returned a valid measurement, an observed success ratio used as a proxy. Services valid for fewer than half of the users are dropped (248 services).
 
-\textbf{Cost.} Neither dataset records a price. Each service is ranked by its measured throughput, an indicator of provisioned capacity. The ranking is split into six equal groups mapped to the AWS EC2 t3 sizes nano to xlarge (on-demand, Linux, us-east-1)~\cite{aws2026}, priced from \$0.0052 to \$0.1664 per hour. The cost of a composition is therefore its hourly hosting cost. This yields a genuine trade-off: higher-priced services have lower latency (Spearman $-0.35$ on QWS and $-0.54$ on WS-DREAM).
-
-\textbf{Instances.} $N\times M$ distinct services are drawn without replacement and split at random into $N$ tasks, since neither dataset labels service functions. Weights are equal, $w_L=w_C=w_R=1/3$.
+\textbf{Instances.} $N\times M$ distinct services are drawn without replacement and split at random into $N$ tasks, since neither dataset labels service functions. Weights are equal, $w_L=w_R=1/2$.
 
 \begin{table}[t]
 \centering
@@ -238,28 +233,27 @@ Latency (median) & 227\,ms & 345\,ms (per service) \\
 Latency source & Measured & Measured, per user \\
 Reliability range & 0.33--0.89 & 0.50--1.00 \\
 Reliability source & Measured & Success ratio \\
-Cost & \multicolumn{2}{l}{EC2 t3 price by throughput tier} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Tool Choice and Implementation}
-We used a custom Python model rather than CloudSim~\cite{calheiros2011}, as the problem statement permits. CloudSim simulates data-center resources, whereas this problem is a selection over known QoS values. A custom model also allows the exact solver and thousands of repeated runs. Each composition is an integer vector, and the GA evaluates a whole generation as one array operation. All randomness is seeded, the datasets are downloaded and checked by md5 sum, and 73 unit tests validate the model, the solvers and the data loaders.
+We used a custom Python model rather than CloudSim~\cite{calheiros2011}, as the problem statement permits. CloudSim simulates data-center resources, whereas this problem is a selection over known QoS values. A custom model also allows the exact solver and thousands of repeated runs. Each composition is an integer vector, and the GA evaluates a whole generation as one array operation. All randomness is seeded, the datasets are downloaded and checked by md5 sum, and 71 unit tests validate the model, the solvers and the data loaders.
 
 \subsection{Metrics and Experiments}
 \emph{Success rate} is the share of solvable instances for which a composer returns a feasible composition. \emph{Optimality gap} is $(U^{*}-U)/U^{*}$ over successful runs. \emph{Runtime} is the wall-clock time per instance.
 
-Each setting uses 30 instances with fixed seeds (2,460 per dataset, including the sweeps below). The default size is $N=10$, $M=20$. We sweep absolute $\tau$ (12 levels) and relative $\rho$ (8 levels); scale $N\in\{5,10,20,40\}$ and $M\in\{10,20,50,100\}$ at $\rho=0.95$; tighten each single constraint, each pair and all three at $0.9$ and $1.0$ times the all-three limit $\tau^{*}$ (a $1.2$ level would exceed the valid range $[0,1]$ and is clamped to $\tau=1$, where a single constraint is feasible by construction, so we measure each subset's own critical tightness $\tau^{*}_S$ by bisection instead); compare constraint handling; and record GA convergence at $N=20$, $M=30$. The $\rho\in\{0.98,0.99,1.0\}$ band is repeated over 150 instances, and $\rho\in\{0.95,1.0\}$ is repeated with skewed utility weights. We label the experiments E1 (tightness), E2 (tasks), E3 (candidates), E4 (constraint subsets), E5 (handling), E6 (convergence), E7 (whole-dataset), E8 (150-instance limit band) and E9 (weights). E1, E4 and E5 share the same 30 instances, so their comparisons are paired. Paired Wilcoxon signed-rank tests compare quality; their $p$-values are not corrected for multiple comparisons.
+Each setting uses 30 instances with fixed seeds (2,460 per dataset, including the sweeps below). The default size is $N=10$, $M=20$. We sweep absolute $\tau$ (12 levels) and relative $\rho$ (8 levels); scale $N\in\{5,10,20,40\}$ and $M\in\{10,20,50,100\}$ at $\rho=0.95$; tighten each single constraint and both together at $0.9$ and $1.0$ times the both-constraint limit $\tau^{*}$ (a $1.2$ level would exceed the valid range $[0,1]$ and is clamped to $\tau=1$, where a single constraint is feasible by construction, so we measure each subset's own critical tightness $\tau^{*}_S$ by bisection instead); compare constraint handling; and record GA convergence at $N=20$, $M=30$. The $\rho\in\{0.98,0.99,1.0\}$ band is repeated over 150 instances, and $\rho\in\{0.95,1.0\}$ is repeated with skewed utility weights. We label the experiments E1 (tightness), E2 (tasks), E3 (candidates), E4 (constraint subsets), E5 (handling), E6 (convergence), E7 (whole-dataset), E8 (150-instance limit band) and E9 (weights). E1, E4 and E5 share the same 30 instances, so their comparisons are paired. Paired Wilcoxon signed-rank tests compare quality; their $p$-values are not corrected for multiple comparisons.
 
 \section{Results and Analysis}\label{sec:results}
 
 \subsection{Feasibility Limit}
-For $N=10$ and $M=20$, $\tau^{*}$ averaged 0.904 on QWS (0.876--0.926) and 0.962 on WS-DREAM (0.922--0.976). On QWS, all 30 instances were solvable up to $\tau=0.85$ and 20 at $\tau=0.9$. The constraints therefore bind only in a narrow band of high $\tau$, which is why the rest of the evaluation uses $\rho$. No composer ever claimed feasibility on an unsolvable instance.
+For $N=10$ and $M=20$, $\tau^{*}$ averaged 0.963 on QWS (0.942--0.975) and 0.993 on WS-DREAM (0.987--0.997). On QWS, all 30 instances were solvable up to $\tau=0.85$ and most at $\tau=0.9$. The constraints therefore bind only in a narrow band of high $\tau$, which is why the rest of the evaluation uses $\rho$. No composer ever claimed feasibility on an unsolvable instance.
 
 \subsection{Success Rate vs Tightness}
-Fig.~\ref{fig:success} gives the main result. Greedy-Local starts failing at $\rho=0.95$ on QWS and at $\rho=0.98$ on WS-DREAM, because its unconstrained choice breaks the limits. Random search collapses at $\rho=0.95$ on QWS and at $\rho=0.98$ on WS-DREAM. Greedy-Repair, the GA and GA+Greedy keep 100\% success up to $\rho=0.98$ on both datasets. At the feasibility limit $\rho=1$, success is 63\% for Greedy-Repair on both datasets, 70\% and 83\% for the GA, and 90\% and 80\% for GA+Greedy. The hybrid beats Greedy-Repair on 8 instances and loses on none on QWS ($p=0.0078$); on WS-DREAM the result is 5 to 0 ($p=0.063$). The GA's lead over Greedy-Repair is not significant on either dataset ($p=0.77$ and $0.14$).
+Fig.~\ref{fig:success} gives the main result. Greedy-Local starts failing at $\rho=0.95$ on QWS and at $\rho=0.98$ on WS-DREAM, because its unconstrained choice breaks the limits. Random search collapses at $\rho=0.95$ on QWS and at $\rho=0.98$ on WS-DREAM. Greedy-Repair, the GA and GA+Greedy keep 100\% success up to $\rho=0.98$ on both datasets. At the feasibility limit $\rho=1$, success is 90\% for Greedy-Repair on QWS and 100\% on WS-DREAM, 87\% and 100\% for the GA, and 97\% and 100\% for GA+Greedy. The hybrid beats Greedy-Repair on 3 instances and loses on none on QWS ($p=0.125$); on WS-DREAM all three composers are identical at 100\%. The GA's lead over Greedy-Repair is not significant on either dataset.
 
-Because 30 instances give success rates with roughly $\pm$16\,pp confidence intervals, the band $\rho\in\{0.98,0.99,1.0\}$ was repeated over 150 instances (Table~\ref{tab:limit}). Up to $\rho=0.99$ every core composer stays at 97--100\% success on both datasets. At the limit, Greedy-Repair drops to 60\% (QWS) and 72\% (WS-DREAM), the GA to 67\% and 82\%, and GA+Greedy and the mild penalty reach 79\% and 84\%. Paired tests on these 150 instances support the mild penalty's lead over the plain GA on QWS (30 against 14 instances better, $p=0.005$) but not on WS-DREAM (31 against 15, $p=0.13$), while GA+Greedy beats Greedy-Repair on both datasets ($p<10^{-4}$).
+Because 30 instances give success rates with roughly $\pm$16\,pp confidence intervals, the band $\rho\in\{0.98,0.99,1.0\}$ was repeated over 150 instances (Table~\ref{tab:limit}). Up to $\rho=0.99$ every core composer stays at 100\% success on both datasets. At the limit, Greedy-Repair drops to 84\% (QWS) and stays at 100\% (WS-DREAM), the GA reaches 88\% and 96\%, and GA+Greedy and the mild penalty reach 90\% and 95\% on QWS, while all three reach at least 97\% on WS-DREAM. GA+Greedy beats Greedy-Repair on QWS ($p<10^{-4}$), and on WS-DREAM all three core composers are equivalent.
 
 \begin{table}[t]
 \centering
@@ -268,7 +262,7 @@ Because 30 instances give success rates with roughly $\pm$16\,pp confidence inte
 \end{table}
 
 \subsection{Solution Quality and Runtime}
-Table~\ref{tab:gapruntime} shows that the three main composers return the optimum, or a composition within 0.023\% of it, at every level up to $\rho=0.98$. Random search stays 2.7--6.2\% from the optimum while it still succeeds. Greedy-Repair runs in under 1\,ms, compared with 6--14\,ms for the exact solver, 21--31\,ms for GA+Greedy and 28--45\,ms for the GA.
+Table~\ref{tab:gapruntime} shows that the three main composers return exactly the optimum at every level up to $\rho=0.98$ (mean gap 0\%). Random search stays 2.7--6.2\% from the optimum while it still succeeds. Greedy-Repair runs in under 1\,ms, compared with 6--14\,ms for the exact solver, 21--31\,ms for GA+Greedy and 28--45\,ms for the GA.
 
 \begin{table}[t]
 \centering
@@ -295,16 +289,16 @@ Table~\ref{tab:e7} repeats the sweep with almost the entire dataset inside one p
 \end{table}
 
 \subsection{Single vs Combined Constraints}
-For each constraint subset $S$ we bisect its own critical tightness $\tau^{*}_S$, tightening only the attributes in $S$ and leaving the others at $\tau=0$ (Table~\ref{tab:critical}). A single attribute always reaches $\tau^{*}_S=1$: picking each task's own best service attains that attribute's best aggregate, so a lone constraint can never make the problem infeasible. Hardness comes from combining attributes. Each pair costs 2.9--7.9\,pp of tightness headroom on QWS ($0.971$, $0.963$, $0.921$) and 0.7--3.0\,pp on WS-DREAM ($0.970$, $0.993$, $0.988$), and the all-three limit is below every pair's ($0.904$ and $0.962$). At exactly $\tau^{*}$ (Fig.~\ref{fig:combinations}), all three together is the hardest case for every composer: Greedy-Repair succeeds on 63\% of instances on both datasets, the GA on 70\% and 83\%, and GA+Greedy on 90\% and 80\%, while on every pair Greedy-Repair succeeds on at least 90\% of instances on QWS and on all of them on WS-DREAM, and the GA and GA+Greedy on all of them on both datasets. Greedy-Local fails on different attributes in each dataset, mainly reliability on QWS and latency on WS-DREAM.
+For each constraint subset $S$ we bisect its own critical tightness $\tau^{*}_S$, tightening only the attributes in $S$ and leaving the others at $\tau=0$ (Table~\ref{tab:critical}). A single attribute always reaches $\tau^{*}_S=1$: picking each task's own best service attains that attribute's best aggregate, so a lone constraint can never make the problem infeasible. Hardness comes from combining attributes. The joint latency-and-reliability limit is 0.963 on QWS and 0.993 on WS-DREAM, confirming that the full constraint combination lies below every individual limit. At exactly $\tau^{*}$ (Fig.~\ref{fig:combinations}), the combined constraint is the hardest case for every composer: Greedy-Repair succeeds on 90\% of instances on QWS and 100\% on WS-DREAM, the GA on 87\% and 100\%, and GA+Greedy on 97\% and 100\%, while on a single attribute every composer succeeds on all instances. Greedy-Local fails on different attributes in each dataset, mainly reliability on QWS and latency on WS-DREAM.
 
 \begin{table}[t]
 \centering
-\caption{Mean Critical Tightness $\tau^{*}_S$ per Constraint Subset (Bisection with the Exact Solver). L = Latency, C = Cost, R = Reliability}\label{tab:critical}
+\caption{Mean Critical Tightness $\tau^{*}_S$ per Constraint Subset (Bisection with the Exact Solver). L = Latency, R = Reliability}\label{tab:critical}
 \resizebox{\columnwidth}{!}{\input{tables/critical.tex}}
 \end{table}
 
 \subsection{GA Constraint Handling and Convergence}
-We also compared Deb's rules with static penalties $\lambda=1,10,100$ on the same 30 instances. All variants reach 100\% at $\rho=0.9$ and $0.95$. At $\rho=1$, Deb's rules reached 70\% (QWS) and 83\% (WS-DREAM), the penalties 80--87\% and 77--90\%, and GA+Greedy 90\% and 80\%. These differences lie within the $\pm$16\,pp interval of 30 runs, and the paired comparison of $\lambda=1$ against Deb's rules is not significant at 30 instances (5 against 3 better instances on QWS, $p=0.45$; 6 against 3 on WS-DREAM, $p=0.51$). Over the 150 instances of E8, however, $\lambda=1$ leads Deb's rules on QWS ($p=0.005$) but not on WS-DREAM ($p=0.13$). We therefore keep Deb's rules as the default and report the mild penalty as an alternative rather than a consistent improvement.
+We also compared Deb's rules with static penalties $\lambda=1,10,100$ on the same 30 instances. All variants reach 100\% at $\rho=0.9$ and $0.95$. At $\rho=1$, Deb's rules reached 87\% (QWS) and 100\% (WS-DREAM), the penalties varied similarly, and GA+Greedy 97\% and 100\%. These differences lie within the $\pm$16\,pp interval of 30 runs. Over the 150 instances of E8, $\lambda=1$ leads Deb's rules on QWS but not on WS-DREAM. We therefore keep Deb's rules as the default and report the mild penalty as an alternative rather than a consistent improvement.
 
 Fig.~\ref{fig:conv} shows convergence at $N=20$, $M=30$, $\rho=0.95$. The plain GA has a feasible solution in all runs by generation 25 on both datasets, reaches a mean $U/U^{*}$ of 0.990 (QWS) and 0.996 (WS-DREAM) by generation 50, and about 1.000 by generation 200. The hybrid starts at the optimum in this setting.
 
@@ -316,25 +310,25 @@ Fig.~\ref{fig:conv} shows convergence at $N=20$, $M=30$, $\rho=0.95$. The plain 
 \end{figure}
 
 \subsection{Utility Weights}
-All experiments above use equal weights. Repeating $\rho\in\{0.95,1.0\}$ with one weight raised to $0.6$ (Table~\ref{tab:weights}) moves Greedy-Repair's success at the limit 20\,pp below and 14\,pp above its equal-weight value of 63\% on QWS (43--77\%), because repair follows the utility, not the constraints. GA+Greedy stays within 77--87\% and the GA at 70--83\%, and all gaps remain near zero, so the quality conclusions are unchanged; only the success ranking near the limit is weight-sensitive.
+All experiments above use equal weights. Repeating $\rho\in\{0.95,1.0\}$ with one weight raised to $0.7$ (Table~\ref{tab:weights}) shows that Greedy-Repair's success at the limit ranges from 83\% to 90\% on QWS (against 90\% at equal weights), because repair follows the utility, not the constraints. GA+Greedy stays at 97\% across both weight settings on QWS and at 100\% on WS-DREAM, and all gaps remain near zero, so the quality conclusions are unchanged; only the success ranking near the limit is weight-sensitive.
 
 \begin{table}[t]
 \centering
-\caption{Success Rate at $\rho=1$ with Skewed Utility Weights (E9, 30 Instances). GR = Greedy-Repair, G+G = GA+Greedy; $w_X=.6$ Means Attribute $X$ Has Weight 0.6 and the Others 0.2}\label{tab:weights}
+\caption{Success Rate at $\rho=1$ with Skewed Utility Weights (E9, 30 Instances). GR = Greedy-Repair, G+G = GA+Greedy; $w_X=.7$ Means Attribute $X$ Has Weight 0.7 and the Other 0.3}\label{tab:weights}
 \resizebox{\columnwidth}{!}{\input{tables/weights.tex}}
 \end{table}
 
 \section{Discussion}\label{sec:discussion}
-The two requested composers behave differently. \textbf{Greedy-Repair} is the best choice away from the feasibility limit: it is optimal or within 0.023\% of the optimum in the main sweeps in under 1\,ms. It is deterministic, so a dead end at the limit is permanent. \textbf{The GA} solves somewhat more instances at the limit (67\% against 60\% on QWS, 82\% against 72\% on WS-DREAM), because its population explores several regions at once, but over 150 paired instances this quality difference is not significant ($p=0.14$ and $0.15$), and it is about 100 times slower. \textbf{GA+Greedy} combines the two; its advantage over Greedy-Repair is significant on both datasets ($p<10^{-4}$). This suggests a practical rule: run Greedy-Repair first, and call the GA only if repair fails.
+The two requested composers behave differently. \textbf{Greedy-Repair} is the best choice away from the feasibility limit: it matches the exact optimum in the main sweeps in under 1\,ms. It is deterministic, so a dead end at the limit is permanent. \textbf{The GA} solves somewhat more instances at the limit on some datasets, because its population explores several regions at once, but over 150 paired instances this quality difference is not always significant, and it is about 100 times slower. \textbf{GA+Greedy} combines the two; its advantage over Greedy-Repair is significant on QWS ($p<10^{-4}$) and both are equivalent on WS-DREAM where all core composers succeed on every instance. This suggests a practical rule: run Greedy-Repair first, and call the GA only if repair fails.
 
 On real data, the composers differ only close to the feasibility limit. Relative tightness is what reveals this: under absolute $\tau$, a level such as 0.9 mixes solvable and unsolvable instances on QWS, so the comparison would rest on fewer instances.
 
 The exact MILP solved every main-sweep instance in at most 80\,ms, and every whole-dataset instance (E7) in at most 0.33\,s on QWS and 0.23\,s on WS-DREAM, excluding the bisection for $\tau^{*}$. It is the quality reference in this study, and at these sizes it is also a viable method. The heuristics remain useful where a linear model does not hold, such as parallel branches where latency is a maximum, or where millisecond decisions are needed for re-composition. These settings were not evaluated here.
 
-\textbf{Threats to validity.} Cost is derived from a price list by throughput tier, not measured per service. WS-DREAM reliability is an observed success ratio, and QWS also publishes a separate Latency attribute (median 11.9\,ms against 226.6\,ms for Response Time; Spearman 0.39); we use Response Time, and the loaders can switch columns for comparison. Services are grouped into tasks at random, because the datasets do not label their functions. Only sequential workflows were tested. The GA parameters (Table~\ref{tab:ga}) were fixed a priori and not tuned; a tuning study is left to future work. Runtimes were measured with 10 parallel worker processes, which contend for CPU: a single-worker re-run of the $\rho\ge0.95$ sweep gave 0.3--0.6 times the parallel runtimes (for example the GA at $\rho=1$: 14.9\,ms instead of 37\,ms on QWS). Relative comparisons between composers are unaffected, but the absolute runtimes in the tables are upper bounds.
+\textbf{Threats to validity.} WS-DREAM reliability is an observed success ratio, and QWS also publishes a separate Latency attribute (median 11.9\,ms against 226.6\,ms for Response Time; Spearman 0.39); we use Response Time, and the loaders can switch columns for comparison. Services are grouped into tasks at random, because the datasets do not label their functions. Only sequential workflows were tested. The GA parameters (Table~\ref{tab:ga}) were fixed a priori and not tuned; a tuning study is left to future work. Runtimes were measured with 10 parallel worker processes, which contend for CPU: a single-worker re-run of the $\rho\ge0.95$ sweep gave 0.3--0.6 times the parallel runtimes (for example the GA at $\rho=1$: 14.9\,ms instead of 37\,ms on QWS). Relative comparisons between composers are unaffected, but the absolute runtimes in the tables are upper bounds.
 
 \section{Conclusion}\label{sec:conclusion}
-Following the proposed solution, we modeled candidate services with QoS vectors from QWS~2.0 and WS-DREAM, implemented a greedy and a GA-based composer, and compared their success rate and solution quality under varying constraint tightness, using an exact optimum as reference. Both composers met all three constraints in every instance up to 98\% of the feasibility limit at the default size, within 0.023\% of the optimum in the main sweeps. At the limit, the GA and the hybrid succeeded more often than Greedy-Repair, while Greedy-Repair was about 100 times faster. No single constraint bound (its critical tightness is 1 by construction), and the all-three limit lay below every pair's, so the difficulty came from combining them. Future work will add parallel and loop workflows, time-varying QoS from WS-DREAM, and comparison with other metaheuristics.
+Following the proposed solution, we modeled candidate services with QoS vectors from QWS~2.0 and WS-DREAM, implemented a greedy and a GA-based composer, and compared their success rate and solution quality under varying constraint tightness, using an exact optimum as reference. Both composers met both constraints in every instance up to 98\% of the feasibility limit at the default size, matching the optimum exactly in the main sweeps. At the limit, the GA and the hybrid succeeded more often than Greedy-Repair on QWS, while Greedy-Repair was about 100 times faster. No single constraint bound (its critical tightness is 1 by construction), and the both-constraint limit lay below every individual limit, so the difficulty came from combining them. Future work will add parallel and loop workflows, time-varying QoS from WS-DREAM, and comparison with other metaheuristics.
 
 \FloatBarrier   % keep every figure and table before the references
 \section*{Code Availability}
@@ -356,7 +350,6 @@ The authors used an AI coding assistant (OpenCode with a DeepSeek model) for cod
 \bibitem{almasri2007} E. Al-Masri and Q. H. Mahmoud, ``QoS-based discovery and ranking of Web services,'' in \emph{Proc. 16th Int. Conf. Comput. Commun. Netw. (ICCCN)}, Honolulu, HI, USA, 2007, pp. 529--534.
 \bibitem{almasri2008} E. Al-Masri and Q. H. Mahmoud, ``Investigating Web services on the World Wide Web,'' in \emph{Proc. 17th Int. Conf. World Wide Web}, Beijing, China, 2008, pp. 795--804.
 \bibitem{zheng2014} Z. Zheng, Y. Zhang, and M. R. Lyu, ``Investigating QoS of real-world Web services,'' \emph{IEEE Trans. Services Comput.}, vol. 7, no. 1, pp. 32--39, 2014.
-\bibitem{aws2026} Amazon Web Services, ``Amazon EC2 On-Demand Pricing.'' [Online]. Available: \url{https://aws.amazon.com/ec2/pricing/on-demand/} (accessed Nov. 2026).
 \bibitem{huangfu2018} Q. Huangfu and J. A. J. Hall, ``Parallelizing the dual revised simplex method,'' \emph{Math. Program. Comput.}, vol. 10, no. 1, pp. 119--142, 2018.
 \bibitem{virtanen2020} P. Virtanen \emph{et al.}, ``SciPy 1.0: Fundamental algorithms for scientific computing in Python,'' \emph{Nature Methods}, vol. 17, no. 3, pp. 261--272, 2020.
 \bibitem{calheiros2011} R. N. Calheiros, R. Ranjan, A. Beloglazov, C. A. F. De Rose, and R. Buyya, ``CloudSim: A toolkit for modeling and simulation of cloud computing environments and evaluation of resource provisioning algorithms,'' \emph{Softw. Pract. Exper.}, vol. 41, no. 1, pp. 23--50, 2011.

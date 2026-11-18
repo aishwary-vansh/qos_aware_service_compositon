@@ -16,7 +16,6 @@ class CompositionResult:
     algorithm: str
     assignment: np.ndarray
     latency: float
-    cost: float
     reliability: float
     utility: float
     violation: float
@@ -30,7 +29,7 @@ class CompositionResult:
         """Flat dict of scalar fields, ready for a CSV row."""
         return {
             "algorithm": self.algorithm, "feasible": self.feasible,
-            "utility": self.utility, "latency": self.latency, "cost": self.cost,
+            "utility": self.utility, "latency": self.latency,
             "reliability": self.reliability, "violation": self.violation,
             "runtime_s": self.runtime_s, "evaluations": self.evaluations,
             "status": self.status,
@@ -60,7 +59,7 @@ def build_result(problem: ProblemInstance, algorithm: str, assignment, start_tim
         status = "feasible" if feasible else "infeasible"
     return CompositionResult(
         algorithm=algorithm, assignment=assignment,
-        latency=float(ev.latency[0]), cost=float(ev.cost[0]),
+        latency=float(ev.latency[0]),
         reliability=float(ev.reliability[0]), utility=float(ev.utility[0]),
         violation=float(ev.violation[0]), feasible=feasible,
         runtime_s=time.perf_counter() - start_time, evaluations=int(evaluations),
