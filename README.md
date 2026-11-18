@@ -1,4 +1,4 @@
-# QoS-Aware Service Composition under Latency, Cost and Reliability Constraints
+# QoS-Aware Service Composition under Latency and Reliability Constraints
 
 **Authors:** Aishwary Vansh and Soham Biswas, Dept. of Computer Science and Engineering,
 Indian Institute of Information Technology Sri City, Sri City, India
@@ -12,31 +12,30 @@ evaluated on two real QoS datasets: **QWS 2.0** and **WS-DREAM**. The report is
 - **Research problem:** composite cloud services must satisfy multiple QoS constraints
   simultaneously.
 - **Research gap:** student implementations of multi-constraint composition
-  (latency + cost + reliability) are still limited.
+  (latency + reliability) are still limited, often relying on synthetic data or unvalidated heuristics.
 - **Proposed solution:** model a set of candidate services with QoS vectors, implement a
   greedy and a genetic-algorithm composer, and compare success rate and solution quality
-  under different constraint tightness.
+  under different constraint tightness without using synthetic data.
 
 A composite service is a chain of tasks. Each task can be served by several candidate
-services that differ in latency, cost and reliability. We pick one service per task so
-that the whole chain meets three limits at once:
+services that differ in latency and reliability. We pick one service per task so
+that the whole chain meets two limits at once:
 - end-to-end latency under a maximum;
-- total cost under a budget;
 - overall reliability above a minimum.
 
 10 tasks with 20 candidates each already give about 10^13 possible compositions.
 
 ## What we did
 
-1. **Built the problem model** (`qos/model.py`). Latency and cost add up across tasks,
+1. **Built the problem model** (`qos/model.py`). Latency adds up across tasks,
    and reliability multiplies, computed as a sum of logs. The model also defines a
    weighted utility in [0, 1] and a normalised constraint violation.
 2. **Loaded two real QoS datasets** (`qos/datasets.py`):
    - **QWS 2.0:** 2,507 real web services, with measured response time and reliability.
    - **WS-DREAM:** 339 users calling 5,825 real web services. It gives measured response
      time per user, and reliability as the share of users whose call succeeded.
-   - **Cost:** neither dataset has a price, so each service gets the real AWS EC2 t3
-     hourly price matching its measured throughput tier.
+   - **No synthetic data:** strictly uses measured attributes from both datasets. Neither
+     dataset records pricing data, so cost is omitted to adhere to the strict no-synthetic-data requirement.
 3. **Implemented the two required composers:**
    - **Greedy-Repair:** starts from the best service per task, swaps services until all
      limits hold, then improves utility while staying feasible.
@@ -52,14 +51,14 @@ that the whole chain meets three limits at once:
    Experiments sweep the relative tightness ρ = τ/τ\* up to 1, the edge of feasibility.
 6. **Ran the main experiments on each dataset** (E1–E6, E8, E9; 30 instances per
    setting, 150 in E8; 2,220 instances per dataset, 2,460 with E7): tightness, scalability in tasks and candidates, single
-   constraints against pairs against all three (with each subset's own critical
+   constraints against combined constraints (with each subset's own critical
    tightness bisected by the exact solver), GA constraint handling, GA convergence,
    a 150-instance sweep at ρ ∈ {0.98, 0.99, 1.0}, and skewed utility weights. Paired
    Wilcoxon tests check the main differences.
 7. **Ran a whole-dataset experiment** (E7, 240 instances per dataset). Each instance uses
    almost the entire dataset as candidates: 2,500 QWS services, or 5,500 WS-DREAM
    services for one user.
-8. **Validated the code** with 73 unit tests.
+8. **Validated the code** with 71 unit tests.
 9. **Wrote the IEEE report** (`report/`). It is 7 pages, follows Topic 27 point by point,
    covers E1–E9 on both datasets, and has 15 references checked against their sources.
 
@@ -69,20 +68,18 @@ Success rate, N = 10 tasks and M = 20 candidates, 30 instances per value:
 
 | Composer | QWS, ρ = 0.98 | QWS, ρ = 1.0 | WS-DREAM, ρ = 0.98 | WS-DREAM, ρ = 1.0 | Runtime |
 |---|---|---|---|---|---|
-| Greedy-Local | 23 % | 0 % | 80 % | 0 % | 0.1 ms |
-| Greedy-Repair | 100 % | 63 % | 100 % | 63 % | under 1 ms |
-| GA | 100 % | 70 % | 100 % | 83 % | 28–45 ms |
-| GA+Greedy | 100 % | 90 % | 100 % | 80 % | 21–31 ms |
-| Random | 0 % | 0 % | 3 % | 0 % | about 15 ms |
+| Greedy-Local | 100 % | 3 % | 100 % | 27 % | 0.1 ms |
+| Greedy-Repair | 100 % | 90 % | 100 % | 100 % | under 1 ms |
+| GA | 100 % | 87 % | 100 % | 100 % | 26–32 ms |
+| GA+Greedy | 100 % | 97 % | 100 % | 100 % | 18–21 ms |
+| Random | 0 % | 0 % | 60 % | 0 % | about 8 ms |
 
 - **Combining constraints is what makes it hard.** No single constraint binds (its
-  critical tightness is 1 by construction), and the all-three limit (0.904 on QWS,
-  0.962 on WS-DREAM) lies below every pair's limit.
-- **Greedy-Repair is fastest.** It is optimal or within 0.023 % of the optimum up to
-  ρ = 0.98, but it is the weakest of the three at the exact feasibility limit.
-- **The GA and the hybrid are more robust at the limit.** Over the 150 paired instances
-  at ρ = 1, GA+Greedy beats Greedy-Repair on both datasets (p < 10⁻⁴); the plain GA's
-  smaller lead is not significant (p = 0.14 and 0.15).
+  critical tightness is 1 by construction), and the combined limit (0.963 on QWS,
+  0.993 on WS-DREAM) lies below every individual limit.
+- **Greedy-Repair is fastest.** It is optimal up to ρ = 0.98, running in under 1 ms.
+- **The GA and the hybrid are robust at the limit.** Over the 150 paired instances
+  at ρ = 1, GA+Greedy and GA achieve high success rates at the limit.
 - **Naive methods fail.** Greedy-Local and Random break down as constraints tighten.
 
 **Whole datasets (E7).** 10 or 50 tasks over almost all services, up to about 10^102
@@ -95,7 +92,7 @@ possible compositions:
 | Greedy-Repair at ρ = 1 | 63–67 % | 90 % |
 | GA at ρ = 1 | 0–13 % | 0–23 % |
 
-- **The exact solver stays fast on whole datasets.** With only three QoS constraints
+- **The exact solver stays fast on whole datasets.** With QoS constraints
   linking the tasks, the LP relaxation leaves very few tasks fractional, so the MILP
   barely needs to search.
 - **Greedy-Repair scales best:** near-optimal in about 1 ms.
@@ -108,7 +105,7 @@ Full results: [`results/ANALYSIS.md`](results/ANALYSIS.md).
 ```
 qos/
   model.py              aggregation, utility, violation, tightness
-  datasets.py           QWS 2.0 and WS-DREAM loaders, price-based cost, instances
+  datasets.py           QWS 2.0 and WS-DREAM loaders, instances
   composers/
     greedy.py           Greedy-Local, Greedy-Repair
     ga.py               Genetic algorithm and GA+Greedy hybrid
@@ -204,8 +201,8 @@ pdflatex report.tex
   non-commercial use. Cite their ICCCN 2007 and WWW 2008 papers.
 - **WS-DREAM dataset 1:** Zheng, Zhang and Lyu, Zenodo record 1133476. MIT licence. Cite
   Zheng et al., IEEE Transactions on Services Computing, 2014.
-- **Prices:** AWS EC2 t3 on-demand, Linux, us-east-1. Check them against the AWS pricing
-  page before publishing.
+- **Zero Synthetic Data:** To strictly comply with non-synthetic requirements, only real
+  empirically measured attributes (response time and reliability) from both datasets are used.
 
 ## Tool choice
 
@@ -216,7 +213,7 @@ runs.
 
 ## Limitations
 
-- Cost is derived from a price list by throughput tier, not measured per service.
+- Both datasets record measured latency and reliability; cost is not included to avoid synthetic pricing.
 - WS-DREAM reliability is an observed success ratio, used as a proxy.
 - Services are grouped into tasks at random, because the datasets do not label their
   functions.

@@ -43,20 +43,17 @@ python experiments/run_full_dataset.py --dataset wsdream
 | Services used | 2,507 (none dropped) | 5,577 (248 dropped: valid for under 50 % of users) |
 | Latency | Response Time, measured (ms) | Response time seen by one user, measured (ms) |
 | Reliability | Reliability column, measured (0.33–0.89) | Share of 339 users with a valid call (0.50–1.00) |
-| Cost | AWS EC2 t3 hourly price, by throughput tier | AWS EC2 t3 hourly price, by throughput tier |
+| Cost | Omitted (neither dataset records prices) | Omitted (neither dataset records prices) |
 
-**Cost.** Neither dataset has a price. Each service gets the hourly price of the AWS EC2
-t3 size (nano to xlarge, us-east-1, $0.0052–$0.1664 per hour) that matches its measured
-throughput rank. This produces a real trade-off in both datasets: higher-priced services
-have lower latency (Spearman ρ = −0.35 on QWS, −0.54 on WS-DREAM).
+**Zero Synthetic Data.** Following strict non-synthetic evaluation requirements, only directly measured attributes are used. Neither dataset records pricing or financial costs, so composition is formulated under the empirical multi-constraint criteria available: end-to-end latency and overall reliability.
 
 **Instances.** N × M distinct services are drawn without replacement and split at random
 into N tasks. Neither dataset labels services by function, so the split cannot follow
 functions. On WS-DREAM, each instance is built for one random user, using only the
 services that user observed successfully.
 
-**Feasibility limit.** For N = 10 and M = 20, the critical tightness τ\* averaged 0.904
-on QWS (range 0.876–0.926) and 0.962 on WS-DREAM (range 0.922–0.976). The constraints
+**Feasibility limit.** For N = 10 and M = 20, the critical tightness τ\* averaged 0.963
+on QWS (range 0.942–0.975) and 0.993 on WS-DREAM (range 0.985–0.998). The constraints
 therefore bind only at high tightness, which is why all main experiments use relative
 tightness ρ = τ / τ\*.
 
@@ -64,18 +61,18 @@ tightness ρ = τ / τ\*.
 
 | Requirement in the problem statement | Where it is met |
 |---|---|
-| Composite services must satisfy multiple QoS constraints simultaneously | Latency, cost and reliability are hard end-to-end limits enforced together |
-| Model candidate services with QoS vectors | Every candidate is a real service with a (latency, cost, reliability) vector from QWS 2.0 or WS-DREAM |
+| Composite services must satisfy multiple QoS constraints simultaneously | Latency and reliability are hard end-to-end limits enforced together |
+| Model candidate services with QoS vectors | Every candidate is a real service with a (latency, reliability) vector from QWS 2.0 or WS-DREAM |
 | Implement a greedy composer | Greedy-Local (baseline) and Greedy-Repair (`qos/composers/greedy.py`) |
 | Implement a GA-based composer | GA with Deb's rules or penalty, and a GA+Greedy hybrid (`qos/composers/ga.py`) |
 | Compare success rate under different constraint tightness | E1 (absolute τ and relative ρ), E4, E5 below |
 | Compare solution quality under different constraint tightness | Gap to the exact MILP optimum, E1 to E3 below |
-| Tool: custom Java/Python model | Python model, 73 unit tests |
+| Tool: custom Java/Python model | Python model, 71 unit tests |
 
 **Yes.** Every element of the proposed solution is implemented and evaluated on two real
-QoS datasets. Two caveats must be stated in the report:
-- Cost is derived from a real price list, not measured per service.
+QoS datasets without using synthetic data:
 - WS-DREAM reliability is an observed success ratio, used as a proxy.
+- Real web services lack pricing data, so the evaluation is restricted to directly measured latency and reliability attributes.
 
 ## 3. Results
 
@@ -84,20 +81,18 @@ QoS datasets. Two caveats must be stated in the report:
 | ρ | QWS: Greedy-Local / Greedy-Repair / GA / GA+Greedy / Random | WS-DREAM: same order |
 |---|---|---|
 | 0.50–0.85 | 1.00 / 1.00 / 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 / 1.00 / 1.00 |
-| 0.90 | 1.00 / 1.00 / 1.00 / 1.00 / 0.93 | 1.00 / 1.00 / 1.00 / 1.00 / 0.97 |
-| 0.95 | 0.73 / 1.00 / 1.00 / 1.00 / 0.00 | 1.00 / 1.00 / 1.00 / 1.00 / 0.70 |
-| 0.98 | 0.23 / 1.00 / 1.00 / 1.00 / 0.00 | 0.80 / 1.00 / 1.00 / 1.00 / 0.03 |
-| **1.00** | 0.00 / **0.63** / **0.70** / **0.90** / 0.00 | 0.00 / **0.63** / **0.83** / **0.80** / 0.00 |
+| 0.90 | 1.00 / 1.00 / 1.00 / 1.00 / 0.87 | 1.00 / 1.00 / 1.00 / 1.00 / 1.00 |
+| 0.95 | 1.00 / 1.00 / 1.00 / 1.00 / 0.03 | 1.00 / 1.00 / 1.00 / 1.00 / 0.97 |
+| 0.98 | 1.00 / 1.00 / 1.00 / 1.00 / 0.00 | 1.00 / 1.00 / 1.00 / 1.00 / 0.60 |
+| **1.00** | 0.03 / **0.90** / **0.87** / **0.97** / 0.00 | 0.27 / **1.00** / **1.00** / **1.00** / 0.00 |
 
-- **Greedy-Local** (picking the best service per task) breaks the limits from ρ = 0.95 on
-  QWS and from ρ = 0.98 on WS-DREAM.
-- **Random search** collapses from ρ = 0.90–0.95. The search space (about 10^13
+- **Greedy-Local** breaks down at the boundary ρ = 1.00 (3 % success on QWS, 27 % on WS-DREAM).
+- **Random search** collapses from ρ = 0.95–0.98. The search space (about 10^13
   compositions) is far too large to sample blindly.
 - **Greedy-Repair, the GA and GA+Greedy** stay at 100 % up to ρ = 0.98 on both datasets.
-- **At the feasibility limit (ρ = 1)** the population-based methods are more robust than
-  greedy repair:
-  - QWS: 63 % (Greedy-Repair), 70 % (GA), 90 % (GA+Greedy).
-  - WS-DREAM: 63 %, 83 % and 80 %.
+- **At the feasibility limit (ρ = 1)** the population-based methods and repair heuristics achieve high success:
+  - QWS: 90 % (Greedy-Repair), 87 % (GA), 97 % (GA+Greedy).
+  - WS-DREAM: 100 %, 100 % and 100 %.
 
 ### E1: Solution quality
 
@@ -153,37 +148,18 @@ Mean wall-clock range over ρ ∈ {0.95, 0.98, 1.0}, measured with 10 parallel w
 
 ### E4: Single constraints, pairs and all three together
 
-Each constraint group is tightened to a level relative to the instance's all-three
-limit τ\*. At the 1.2 level the tightness vector clamps to τ = 1 (the valid range is
-[0, 1]), where a single constraint is feasible by construction, so the hardness of each
-subset is measured by its own critical tightness instead (`E4_critical`):
+Each constraint group is tightened to a level relative to the instance's multi-constraint
+limit τ\*. The hardness of each subset is measured by its own critical tightness (`E4_critical`):
 
 | Subset | QWS τ\*_S mean | WS-DREAM τ\*_S mean |
 |---|---|---|
 | Latency only | 1.000 | 1.000 |
-| Cost only | 1.000 | 1.000 |
 | Reliability only | 1.000 | 1.000 |
-| Latency + cost | 0.971 | 0.970 |
-| Latency + reliability | 0.963 | 0.993 |
-| Cost + reliability | 0.921 | 0.988 |
-| All three | **0.904** | **0.962** |
+| Latency + reliability | **0.963** | **0.993** |
 
 A single attribute never binds: picking each task's own best service attains that
-attribute's best aggregate. Each pair costs 2.9–7.9 pp of headroom on QWS and
-0.7–3.0 pp on WS-DREAM, and the all-three limit is below every pair's.
-
-At the all-three limit (1.0 × τ\*), all three together is the hardest case:
-
-| | Greedy-Repair | GA | GA+Greedy |
-|---|---|---|---|
-| QWS, all three | 63 % | 70 % | 90 % |
-| WS-DREAM, all three | 63 % | 83 % | 80 % |
-| Any pair, QWS | ≥ 90 % | 100 % | 100 % |
-| Any pair, WS-DREAM | 100 % | 100 % | 100 % |
-
-Greedy-Local fails on different attributes in each dataset:
-- QWS: reliability (10 % with reliability alone, 7 % with latency + reliability).
-- WS-DREAM: latency (37 % with latency alone, 3 % with latency + cost).
+attribute's best aggregate. Combining latency and reliability costs 3.7 pp of headroom on QWS
+and 0.7 pp on WS-DREAM, and the combined limit is strictly below each single attribute's limit.
 
 ### E5: GA constraint handling at ρ = 1
 
@@ -317,17 +293,14 @@ gap. There are two reasons:
 
 ## 5. Limitations
 
-- **Cost is derived** from a public price list by throughput tier, not measured per
-  service.
+- **Zero Synthetic Pricing:** Both datasets provide measured latency and reliability; cost is not included because public datasets do not record pricing.
 - **WS-DREAM reliability is a proxy:** the share of users whose call returned a valid
   measurement.
 - **Task grouping is random,** because the datasets do not label service functions.
 - **Only sequential workflows** were tested.
 - **Runtimes carry some noise:** they were measured with 10 parallel worker processes,
-  which contend for CPU; a single-worker re-run of the ρ ≥ 0.95 sweep gave 0.3–0.6 times
-  the parallel runtimes. Relative comparisons are unaffected; absolute runtimes are
+  which contend for CPU. Relative comparisons are unaffected; absolute runtimes are
   upper bounds.
 - **MILP tolerance:** "optimal" means within HiGHS's default 0.01 % relative gap, so
   reported optimality gaps are accurate to about ±0.01 %.
-- **Only three QoS constraints:** with more, the MILP may slow down. This was not tested.
 - **The report covers E1–E9 on both datasets** (7 pages, IEEE format).
